@@ -107,6 +107,7 @@ export function AuthScreen({ screen }: { screen: Screen }) {
     return () => window.clearTimeout(id);
   }, [cooldown]);
   useEffect(() => { if (user?.email) setEmail(user.email); }, [user?.email]);
+  useEffect(() => { if (screen === 'verificar-email') setCooldown(60); }, [screen]);
 
   if (!isFirebaseConfigured && !['termos', 'privacidade'].includes(screen)) {
     return <Shell><div className="auth-success-icon"><KeyRound size={27}/></div><h2>Configuração necessária</h2><p className="auth-subtitle">O código de autenticação está preparado, mas as variáveis públicas do Firebase ainda não estão configuradas neste ambiente.</p><Alert>Configure VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID e os demais valores no ambiente de publicação.</Alert><p className="auth-footer">Nenhuma credencial foi inventada ou exposta no navegador.</p></Shell>;
