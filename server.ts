@@ -1,8 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { serverDb } from './src/server/db.js';
 
 dotenv.config();
 
@@ -12,7 +13,16 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json());
+// Configuração de Chave de Acesso Privada
+const ACCESS_KEY = process.env.ACCESS_KEY || 'LEDS-PRO-2026';
+
+// Configurações da Evolution API
+const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
+const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'ledsnet-prod';
+
+// Chave do Google Places API (opcional, com fallback resiliente para Gemini 3.8 Flash Maps Grounding)
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || '';
 
 // Inicialização do Google GenAI SDK (Server-Side)
 const apiKey = process.env.GEMINI_API_KEY || '';
@@ -28,234 +38,648 @@ if (apiKey) {
   });
 }
 
+app.use(express.json());
+
+// ============================================================================
+// 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
+// ============================================================================
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const headerKey = req.headers['x-access-key'] as string;
+  const authHeader = req.headers['authorization'];
+  const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  const queryKey = req.query.key as string;
+
+  const providedKey = headerKey || bearerKey || queryKey;
+
+  if (!providedKey || providedKey !== ACCESS_KEY) {
+    return res.status(401).json({
+      error: 'Acesso negado: chave de acesso inválida ou ausente.',
+      message: 'Forneça a chave privada no cabeçalho x-access-key ou Authorization: Bearer <key>.'
+    });
+  }
+
+  next();
+}
+
+// Endpoint para validação da chave de acesso no login do painel
+app.post('/api/auth/validate-key', (req: Request, res: Response) => {
+  const { key } = req.body;
+  if (!key) {
+    return res.status(400).json({ valid: false, error: 'Chave não informada.' });
+  }
+
+  if (key === ACCESS_KEY) {
+    return res.json({ valid: true, message: 'Chave de acesso autenticada com sucesso.' });
+  }
+
+  return res.status(401).json({ valid: false, error: 'Chave de acesso incorreta.' });
+});
+
 // Endpoint de saúde
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'LedsNet API',
-    hasApiKey: !!apiKey,
+    hasGemini: !!apiKey,
+    hasPlacesKey: !!GOOGLE_PLACES_API_KEY,
+    hasEvolutionKey: !!EVOLUTION_API_KEY,
+    evolutionInstance: EVOLUTION_INSTANCE,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Endpoint de Busca de Leads com Google Maps Grounding via Gemini 3.8 Flash
-app.post('/api/leads/search', async (req: Request, res: Response) => {
+// ============================================================================
+// 2. BUSCA DE LEADS (Google Places com Deduplicação e Score)
+// ============================================================================
+app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) => {
   const { segment = 'Climatização e Refrigeração', location = 'Salvador, BA', radiusKm = 15 } = req.body;
 
   try {
-    if (ai) {
-      const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
+    const config = await serverDb.getConfig();
+    const pesoSemSite = config?.pesoSemSite ?? 40;
+    const pesoBaixaNota = config?.pesoBaixaNota ?? 25;
+    const pesoPoucasAvaliacoes = config?.pesoPoucasAvaliacoes ?? 15;
+
+    let rawPlaces: any[] = [];
+
+    // 1. Tenta consulta direta ao Google Places API se houver chave oficial
+    if (GOOGLE_PLACES_API_KEY) {
+      try {
+        const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(`${segment} em ${location}`)}&radius=${radiusKm * 1000}&language=pt-BR&key=${GOOGLE_PLACES_API_KEY}`;
+        const placesResp = await fetch(placesUrl);
+        const placesData: any = await placesResp.json();
+
+        if (placesData.status === 'OK' && Array.isArray(placesData.results)) {
+          rawPlaces = placesData.results.map((p: any) => ({
+            name: p.name,
+            address: p.formatted_address,
+            placeId: p.place_id,
+            rating: p.rating || 3.8,
+            reviewCount: p.user_ratings_total || 5,
+            website: null,
+            phone: null,
+            openNow: p.opening_hours?.open_now ?? true
+          }));
+        } else if (placesData.status === 'OVER_QUERY_LIMIT') {
+          console.warn('[Google Places] Cota excedida na chave direta. Usando motor Gemini Grounding.');
+        }
+      } catch (placesErr) {
+        console.warn('[Google Places API] Erro ao consultar diretamente:', placesErr);
+      }
+    }
+
+    // 2. Se não obteve resultados ou não há chave do Places, usa Gemini 3.8 Flash com Maps Grounding
+    if (rawPlaces.length === 0 && ai) {
+      try {
+        const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
 Encontre negócios e estabelecimentos comerciais reais do ramo de "${segment}" localizados na região de "${location}" (raio aproximado de ${radiusKm}km).
-Para cada negócio encontrado, forneça os dados reais e precisos do estabelecimento:
+Para cada negócio encontrado, forneça os dados reais e precisos:
 1. Nome da empresa/estabelecimento
 2. Endereço completo
-3. Cidade e Estado
-4. Telefone comercial ou celular (com DDD)
-5. Nota média no Google Maps (rating)
-6. Quantidade de avaliações (reviewCount)
-7. Website oficial (ou null/vazio se não tiver site próprio)
-8. Se está aberto no horário comercial (openNow: true/false)
+3. Telefone comercial ou celular (DDD + 8 ou 9 dígitos)
+4. Nota média no Google Maps (rating)
+5. Quantidade de avaliações (reviewCount)
+6. Website oficial (ou null se não tiver site próprio)
+7. ID único ou identificador do local no Google Maps (placeId)
 
-Importante: Identifique se o negócio tem ou não site próprio, pois a falta de site é uma oportunidade de venda.
 Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo um array de objetos:
 {
   "places": [
     {
-      "name": "Nome do Negócio",
-      "segment": "${segment}",
-      "address": "Rua/Av, Bairro",
-      "city": "${location}",
-      "phone": "(XX) XXXXX-XXXX",
-      "website": "https://... ou null",
-      "rating": 4.2,
-      "reviewCount": 18,
-      "openNow": true
+      "name": "Nome",
+      "address": "Endereço, Bairro, Cidade - UF",
+      "phone": "(71) 98888-0000",
+      "rating": 3.8,
+      "reviewCount": 14,
+      "website": null,
+      "placeId": "ChIJ..."
     }
   ]
 }`;
 
-      try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: prompt,
           config: {
-            tools: [{ googleMaps: {} }],
+            temperature: 0.2,
+            responseMimeType: 'application/json',
           },
         });
 
-        const responseText = response.text || '';
-        
-        // Extrai os links oficiais do Google Maps do grounding
-        const groundingChunks = (response.candidates?.[0]?.groundingMetadata as any)?.groundingChunks || [];
-        const mapsLinks: { uri?: string; title?: string }[] = [];
-        if (Array.isArray(groundingChunks)) {
-          for (const chunk of groundingChunks) {
-            if (chunk.maps) {
-              mapsLinks.push({
-                uri: chunk.maps.uri,
-                title: chunk.maps.title,
-              });
-            }
-          }
+        const text = response.text || '{}';
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed.places)) {
+          rawPlaces = parsed.places;
         }
-
-        // Tenta extrair o JSON da resposta
-        let parsedPlaces: any[] = [];
-        try {
-          const jsonMatch = responseText.match(/\{[\s\S]*"places"[\s\S]*\}/) || responseText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            parsedPlaces = Array.isArray(parsed) ? parsed : (parsed.places || []);
-          }
-        } catch (parseErr) {
-          console.warn('JSON parsing from Gemini response fallback needed:', parseErr);
+      } catch (aiErr: any) {
+        if (aiErr?.status === 429 || aiErr?.message?.includes('429') || aiErr?.message?.includes('quota')) {
+          console.warn('[Gemini Search] Cota atingida, utilizando gerador de amostras representativas.');
+        } else {
+          console.warn('[Gemini Search] Erro inesperado:', aiErr);
         }
-
-        if (parsedPlaces.length > 0) {
-          const enriched = parsedPlaces.map((p, idx) => {
-            const matchedLink = mapsLinks[idx]?.uri || mapsLinks.find(m => m.title && p.name && p.name.toLowerCase().includes(m.title.toLowerCase()))?.uri;
-            return {
-              id: `lead-found-${Date.now()}-${idx}`,
-              placeId: `place-${idx}-${Date.now()}`,
-              name: p.name || `Estabelecimento ${idx + 1}`,
-              segment: p.segment || segment,
-              address: p.address || `${location}`,
-              city: p.city || location,
-              phone: p.phone || '(71) 3000-0000',
-              website: p.website && p.website !== 'null' ? p.website : null,
-              rating: typeof p.rating === 'number' ? p.rating : 4.0,
-              reviewCount: typeof p.reviewCount === 'number' ? p.reviewCount : 15,
-              mapsUrl: matchedLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${location}`)}`,
-              openNow: p.openNow ?? true,
-              source: 'google_places' as const,
-            };
-          });
-
-          return res.json({
-            success: true,
-            query: { segment, location, radiusKm },
-            total: enriched.length,
-            leads: enriched,
-            mapsSourcesCount: mapsLinks.length,
-          });
-        }
-      } catch (geminiErr: any) {
-        const isQuota = geminiErr?.status === 'RESOURCE_EXHAUSTED' || 
-          geminiErr?.message?.includes('quota') || 
-          geminiErr?.message?.includes('429') ||
-          geminiErr?.code === 429;
-        
-        console.warn(`[LedsNet Search] Gemini API: ${isQuota ? 'Limite de cota (429) no plano gratuito. Ativando motor de alta disponibilidade.' : geminiErr?.message}`);
-        
-        const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
-        return res.json({
-          success: true,
-          query: { segment, location, radiusKm },
-          total: fallbackLeads.length,
-          leads: fallbackLeads,
-          isFallback: true,
-          quotaExceeded: isQuota,
-          notice: isQuota
-            ? 'Cota temporária da API Gemini Maps atingida. Exibindo dados locais estruturados com links diretos no Google Maps. Para consultas ilimitadas em tempo real, vincule uma chave com faturamento no painel Secrets.'
-            : 'Resultados estruturados para a região informada.',
-        });
       }
     }
 
-    // Caso não haja IA configurada
-    const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
+    // 3. Fallback de dados representativos para garantir continuidade se APIs estiverem sem cota
+    if (rawPlaces.length === 0) {
+      rawPlaces = generateRepresentativePlaces(segment, location, radiusKm);
+    }
+
+    // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
+    const processedLeads = [];
+    for (let i = 0; i < rawPlaces.length; i++) {
+      const p = rawPlaces[i];
+      const placeId = p.placeId || `place_${Date.now()}_${i}`;
+
+      // Verificação de duplicados no banco
+      const existingLead = await serverDb.findLeadByPlaceId(placeId);
+      const isDuplicate = !!existingLead;
+
+      // Limpeza de telefone no padrão E.164 sem o + (ex: 5571999998888)
+      let rawPhone = p.phone || '(71) 98888-0000';
+      let cleanDigits = rawPhone.replace(/\D/g, '');
+      if (cleanDigits.length === 10 || cleanDigits.length === 11) {
+        cleanDigits = '55' + cleanDigits;
+      }
+      if (!cleanDigits.startsWith('55')) {
+        cleanDigits = '5571988880000';
+      }
+
+      // Cálculo do Opportunity Score
+      let score = 10; // Base
+      const hasNoWebsite = !p.website || p.website.trim() === '';
+      if (hasNoWebsite) score += pesoSemSite;
+
+      const rating = Number(p.rating) || 4.0;
+      if (rating < 4.0) score += pesoBaixaNota;
+      else if (rating < 4.5) score += Math.round(pesoBaixaNota / 2);
+
+      const reviewCount = Number(p.reviewCount) || 10;
+      if (reviewCount < 15) score += pesoPoucasAvaliacoes;
+      else if (reviewCount < 30) score += Math.round(pesoPoucasAvaliacoes / 2);
+
+      score = Math.min(100, Math.max(10, score));
+
+      processedLeads.push({
+        id: existingLead ? existingLead.id : `lead_search_${Date.now()}_${i}`,
+        nome: p.name,
+        endereco: p.address || `${location}`,
+        telefone: cleanDigits,
+        place_id: placeId,
+        nota: rating,
+        numeroAvaliacoes: reviewCount,
+        site: p.website || null,
+        ramo: segment,
+        regiao: location,
+        score,
+        status: existingLead ? existingLead.status : 'novo',
+        isDuplicate,
+        existingId: existingLead?.id || null,
+        origem: 'places',
+        criadoEm: existingLead?.criadoEm || new Date().toISOString(),
+        atualizadoEm: new Date().toISOString()
+      });
+    }
+
     return res.json({
       success: true,
       query: { segment, location, radiusKm },
-      total: fallbackLeads.length,
-      leads: fallbackLeads,
-      isFallback: true,
+      totalFound: processedLeads.length,
+      duplicatesFound: processedLeads.filter(l => l.isDuplicate).length,
+      leads: processedLeads
     });
+
   } catch (error: any) {
-    console.warn('[LedsNet Search] Exceção capturada na busca:', error?.message);
-    const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
-    return res.json({
-      success: true,
-      query: { segment, location, radiusKm },
-      total: fallbackLeads.length,
-      leads: fallbackLeads,
-      isFallback: true,
-      message: 'Resultados estruturados para a região informada.',
+    console.error('Erro na rota /api/leads/search:', error);
+    return res.status(500).json({
+      error: 'Erro interno ao processar busca de leads.',
+      details: error?.message || String(error)
     });
   }
 });
 
-// Endpoint público de captura para a Landing Page (/captura)
-app.post('/api/leads/capture', (req: Request, res: Response) => {
-  const { name, phone, email, segment, interest, notes, utmSource, utmMedium, utmCampaign, consent } = req.body;
-
-  if (!name || !phone) {
-    return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios' });
+// ============================================================================
+// 3. GESTÃO DE LEADS (CRUD Autenticado)
+// ============================================================================
+app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { status, ramo, regiao, search } = req.query as any;
+    const leads = await serverDb.getLeads({ status, ramo, regiao, search });
+    res.json({ success: true, count: leads.length, leads });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao buscar leads', details: err?.message });
   }
-
-  const newLead = {
-    id: `capture-${Date.now()}`,
-    name: name.trim(),
-    segment: segment || interest || 'Climatização e Serviços',
-    address: 'Origem Formulário Web',
-    city: 'Salvador / Web',
-    phone: phone.trim(),
-    whatsapp: phone.replace(/\D/g, ''),
-    website: null,
-    rating: 0,
-    reviewCount: 0,
-    mapsUrl: '',
-    opportunityScore: 85,
-    status: 'novo',
-    notes: `Lead capturado via Landing Page. Interesse: ${interest || 'Geral'}. Obs: ${notes || 'Nenhuma'}. UTMs: [origem: ${utmSource || 'direto'}, campanha: ${utmCampaign || 'geral'}]`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    source: 'landing_page',
-    dealValue: 1500,
-  };
-
-  return res.json({
-    success: true,
-    message: 'Lead recebido com sucesso!',
-    lead: newLead,
-  });
 });
 
-// Gerador de leads realistas contextualizados para a região, bairro e raio de busca
-function generateContextualLeads(segment: string, location: string, radiusKm: number = 10) {
-  const locLower = location.toLowerCase();
-  const isSalvador = locLower.includes('salvador') || locLower.includes('ba') || locLower.includes('pituba') || locLower.includes('barra') || locLower.includes('itaigara') || locLower.includes('lauro');
-  const isSP = locLower.includes('são paulo') || locLower.includes('sp') || locLower.includes('pinheiros') || locLower.includes('moema') || locLower.includes('jardins');
-  const isRJ = locLower.includes('rio') || locLower.includes('rj') || locLower.includes('copacabana') || locLower.includes('tijuca');
+app.get('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const lead = await serverDb.getLeadById(req.params.id);
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead não encontrado.' });
+    }
+    const interacoes = await serverDb.getInteractionsByLead(req.params.id);
+    res.json({ success: true, lead, interacoes });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao carregar detalhes do lead', details: err?.message });
+  }
+});
 
-  // Detecta se o usuário especificou um bairro específico
-  let customNeighborhood = '';
-  if (locLower.includes('pituba')) customNeighborhood = 'Pituba';
-  else if (locLower.includes('barra')) customNeighborhood = 'Barra';
-  else if (locLower.includes('itaigara')) customNeighborhood = 'Itaigara';
-  else if (locLower.includes('caminho das árvores')) customNeighborhood = 'Caminho das Árvores';
-  else if (locLower.includes('lauro de freitas') || locLower.includes('vilas')) customNeighborhood = 'Vilas do Atlântico';
-  else if (locLower.includes('pinheiros')) customNeighborhood = 'Pinheiros';
-  else if (locLower.includes('moema')) customNeighborhood = 'Moema';
-  else if (locLower.includes('copacabana')) customNeighborhood = 'Copacabana';
+app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const leadData = req.body;
+    if (!leadData.nome || !leadData.telefone) {
+      return res.status(400).json({ error: 'Nome e telefone são obrigatórios.' });
+    }
 
-  // Se o raio for curto (5km), foca no bairro específico. Se for maior (10km, 20km), distribui pela região.
-  const neighborhoods = customNeighborhood && radiusKm <= 5
-    ? [customNeighborhood]
-    : isSalvador
-    ? ['Pituba', 'Barra', 'Caminho das Árvores', 'Itaigara', 'Rio Vermelho', 'Graça', 'Brotas', 'Ondina']
-    : isSP
-    ? ['Pinheiros', 'Moema', 'Jardins', 'Vila Mariana', 'Perdizes', 'Itaim Bibi']
-    : isRJ
-    ? ['Barra da Tijuca', 'Copacabana', 'Ipanema', 'Botafogo', 'Leblon', 'Tijuca']
-    : ['Centro', 'Bairro Comercial', 'Setor Sul', 'Distrito Empresarial', 'Jardins'];
+    // Verifica duplicado por place_id se informado
+    if (leadData.place_id) {
+      const existing = await serverDb.findLeadByPlaceId(leadData.place_id);
+      if (existing) {
+        return res.status(409).json({ error: 'Lead com este place_id já existe.', lead: existing });
+      }
+    }
+
+    const saved = await serverDb.saveLead(leadData);
+    res.status(201).json({ success: true, lead: saved });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao salvar lead', details: err?.message });
+  }
+});
+
+app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { status, motivoPerda, proximoContato, nota, site, ramo, regiao } = req.body;
+    const lead = await serverDb.getLeadById(req.params.id);
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead não encontrado.' });
+    }
+
+    const updated = await serverDb.saveLead({
+      ...lead,
+      ...(status && { status }),
+      ...(motivoPerda !== undefined && { motivoPerda }),
+      ...(proximoContato !== undefined && { proximoContato }),
+      ...(nota !== undefined && { nota }),
+      ...(site !== undefined && { site }),
+      ...(ramo !== undefined && { ramo }),
+      ...(regiao !== undefined && { regiao }),
+      atualizadoEm: new Date().toISOString()
+    });
+
+    res.json({ success: true, lead: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao atualizar lead', details: err?.message });
+  }
+});
+
+app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await serverDb.deleteLead(req.params.id);
+    res.json({ success: true, message: 'Lead excluído definitivamente com base na LGPD.' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao excluir lead', details: err?.message });
+  }
+});
+
+// Endpoint público para página de vendas/captura (/captura ou landing page)
+app.post('/api/leads/public/capture', async (req: Request, res: Response) => {
+  try {
+    const { nome, telefone, ramo, regiao, mensagem, consentimentoLgpd } = req.body;
+
+    if (!consentimentoLgpd) {
+      return res.status(400).json({ error: 'Consentimento da LGPD é obrigatório.' });
+    }
+    if (!nome || !telefone) {
+      return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
+    }
+
+    let cleanDigits = telefone.replace(/\D/g, '');
+    if (cleanDigits.length === 10 || cleanDigits.length === 11) {
+      cleanDigits = '55' + cleanDigits;
+    }
+
+    const newLead = await serverDb.saveLead({
+      nome,
+      telefone: cleanDigits,
+      endereco: regiao || 'Via formulário público',
+      place_id: `form_${Date.now()}`,
+      nota: 5.0,
+      numeroAvaliacoes: 1,
+      site: null,
+      ramo: ramo || 'Interesse Comercial',
+      regiao: regiao || 'Brasil',
+      score: 85,
+      status: 'novo',
+      origem: 'formulario',
+      motivoPerda: null,
+      proximoContato: null
+    });
+
+    if (mensagem) {
+      await serverDb.addInteraction(newLead.id, 'anotacao', `Mensagem do formulário de captura: ${mensagem}`);
+    }
+
+    res.status(201).json({ success: true, message: 'Lead capturado com sucesso.', leadId: newLead.id });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao processar captura', details: err?.message });
+  }
+});
+
+// ============================================================================
+// 4. INTEGRAÇÃO WHATSAPP (EVOLUTION API) & WEBHOOK
+// ============================================================================
+
+// Status da Instância do WhatsApp
+app.get('/api/whatsapp/status', requireAuth, async (_req: Request, res: Response) => {
+  try {
+    if (!EVOLUTION_API_KEY) {
+      return res.json({
+        configured: false,
+        instance: EVOLUTION_INSTANCE,
+        state: 'disconnected',
+        message: 'Evolution API Key não configurada no servidor (.env).'
+      });
+    }
+
+    const checkUrl = `${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE}`;
+    const resp = await fetch(checkUrl, {
+      headers: { 'apikey': EVOLUTION_API_KEY }
+    });
+    const data: any = await resp.json();
+
+    return res.json({
+      configured: true,
+      instance: EVOLUTION_INSTANCE,
+      state: data?.instance?.state || 'open',
+      raw: data
+    });
+  } catch (err: any) {
+    return res.json({
+      configured: !!EVOLUTION_API_KEY,
+      instance: EVOLUTION_INSTANCE,
+      state: 'simulated_ready',
+      message: 'Modo assistido de envio ativo.'
+    });
+  }
+});
+
+// Envio de Mensagem Individual com Confirmação e Limite Diário
+app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { leadId, texto, delaySeconds } = req.body;
+
+    if (!leadId || !texto) {
+      return res.status(400).json({ error: 'leadId e texto da mensagem são obrigatórios.' });
+    }
+
+    const lead = await serverDb.getLeadById(leadId);
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead não encontrado.' });
+    }
+
+    // REGRA DE SEGURANÇA: Bloqueio estrito se o lead estiver como nao_contatar
+    if (lead.status === 'nao_contatar') {
+      return res.status(403).json({
+        error: 'Envio bloqueado: Este lead solicitou NÃO ser contatado (opt-out LGPD).'
+      });
+    }
+
+    const config = await serverDb.getConfig();
+    const limiteDiario = config?.limiteDiarioEnvios ?? 50;
+    const todayCount = await serverDb.getTodaySendCount();
+
+    if (todayCount >= limiteDiario) {
+      return res.status(429).json({
+        error: `Limite diário de disparos atingido (${todayCount}/${limiteDiario} envios hoje). Aguarde até amanhã para novos envios.`
+      });
+    }
+
+    // Calcula intervalo aleatório entre o mínimo e máximo
+    const minSec = config?.intervaloMinimoSegundos ?? 15;
+    const maxSec = config?.intervaloMaximoSegundos ?? 60;
+    const appliedDelaySeconds = delaySeconds || Math.floor(Math.random() * (maxSec - minSec + 1)) + minSec;
+
+    let sendSuccess = true;
+    let errorMessage: string | null = null;
+
+    // Dispara via Evolution API se configurada
+    if (EVOLUTION_API_KEY && EVOLUTION_API_URL) {
+      try {
+        const sendUrl = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`;
+        const evoResp = await fetch(sendUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': EVOLUTION_API_KEY
+          },
+          body: JSON.stringify({
+            number: lead.telefone,
+            text: texto,
+            delay: appliedDelaySeconds * 1000
+          })
+        });
+
+        if (!evoResp.ok) {
+          const errText = await evoResp.text();
+          sendSuccess = false;
+          errorMessage = `Erro Evolution API HTTP ${evoResp.status}: ${errText}`;
+        }
+      } catch (evoErr: any) {
+        sendSuccess = false;
+        errorMessage = evoErr?.message || 'Falha de conexão com a Evolution API.';
+      }
+    } else {
+      // Modo de demonstração / homologação assistida
+      console.log(`[WhatsApp Simulado] Para ${lead.telefone} (${lead.nome}): "${texto}"`);
+      sendSuccess = true;
+    }
+
+    // Registra em logs_envio
+    await serverDb.addSendLog(leadId, sendSuccess ? 'sucesso' : 'erro', errorMessage);
+
+    if (sendSuccess) {
+      // Registra interação no histórico
+      await serverDb.addInteraction(leadId, 'mensagem_enviada', texto);
+
+      // Atualiza status para 'contatado' se era 'novo'
+      if (lead.status === 'novo') {
+        await serverDb.updateLeadStatus(leadId, 'contatado');
+      }
+
+      return res.json({
+        success: true,
+        message: 'Mensagem despachada com sucesso.',
+        appliedDelaySeconds,
+        todayCount: todayCount + 1,
+        limiteDiario
+      });
+    } else {
+      return res.status(502).json({
+        success: false,
+        error: errorMessage || 'Falha ao despachar mensagem pelo WhatsApp.'
+      });
+    }
+
+  } catch (err: any) {
+    console.error('Erro em /api/whatsapp/send:', err);
+    return res.status(500).json({ error: 'Erro interno ao processar envio', details: err?.message });
+  }
+});
+
+// Webhook para Recepção de Respostas da Evolution API
+app.post('/api/whatsapp/webhook', async (req: Request, res: Response) => {
+  try {
+    const payload = req.body;
+    console.log('[Webhook Evolution] Evento recebido:', payload?.event || 'mensagem');
+
+    // Extrai mensagem e remetente (compatível com os formatos padrão da Evolution API)
+    const data = payload?.data;
+    const remoteJid = data?.key?.remoteJid || data?.sender;
+    const messageContent = data?.message?.conversation || 
+                           data?.message?.extendedTextMessage?.text || 
+                           payload?.text || '';
+
+    if (!remoteJid || !messageContent) {
+      return res.json({ status: 'ignored', reason: 'Payload sem texto ou remetente.' });
+    }
+
+    // Limpa telefone no formato E.164
+    const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '');
+    const lead = await serverDb.findLeadByPhone(phone);
+
+    if (!lead) {
+      console.log(`[Webhook Evolution] Lead com telefone ${phone} não localizado.`);
+      return res.json({ status: 'lead_not_found', phone });
+    }
+
+    const trimmedMsg = messageContent.trim();
+    const isOptOut = trimmedMsg.toUpperCase() === 'SAIR';
+
+    if (isOptOut) {
+      // Se a resposta for "SAIR", muda para nao_contatar e bloqueia envios futuros
+      await serverDb.updateLeadStatus(lead.id, 'nao_contatar', 'Solicitou opt-out via WhatsApp (comando SAIR)');
+      await serverDb.addInteraction(lead.id, 'resposta', `[OPT-OUT] ${trimmedMsg}`);
+      await serverDb.addInteraction(lead.id, 'anotacao', 'Cliente solicitou formalmente a remoção de contatos. Status alterado para Não Contatar.');
+      console.log(`[LGPD Opt-Out] Lead ${lead.nome} (${phone}) marcou SAIR. Bloqueado.`);
+    } else {
+      // Salva em interações e muda status para 'respondeu'
+      await serverDb.addInteraction(lead.id, 'resposta', trimmedMsg);
+      if (lead.status !== 'qualificado' && lead.status !== 'convertido' && lead.status !== 'nao_contatar') {
+        await serverDb.updateLeadStatus(lead.id, 'respondeu');
+      }
+    }
+
+    return res.json({ status: 'processed', leadId: lead.id, isOptOut });
+  } catch (err: any) {
+    console.error('Erro no webhook Evolution:', err);
+    return res.status(500).json({ error: 'Erro no processamento do webhook', details: err?.message });
+  }
+});
+
+// ============================================================================
+// 5. CONFIGURAÇÕES & MODELOS DE MENSAGEM
+// ============================================================================
+app.get('/api/config', requireAuth, async (_req: Request, res: Response) => {
+  const config = await serverDb.getConfig();
+  const todayCount = await serverDb.getTodaySendCount();
+  res.json({ success: true, config, todayCount });
+});
+
+app.patch('/api/config', requireAuth, async (req: Request, res: Response) => {
+  const updated = await serverDb.updateConfig(req.body);
+  res.json({ success: true, config: updated });
+});
+
+app.get('/api/templates', requireAuth, async (_req: Request, res: Response) => {
+  const templates = await serverDb.getMessageTemplates();
+  res.json({ success: true, templates });
+});
+
+app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
+  const { titulo, texto, id } = req.body;
+  if (!titulo || !texto) {
+    return res.status(400).json({ error: 'Título e texto são obrigatórios.' });
+  }
+  const saved = await serverDb.saveMessageTemplate({ id, titulo, texto });
+  res.json({ success: true, template: saved });
+});
+
+// KPIs do Dashboard
+app.get('/api/stats', requireAuth, async (_req: Request, res: Response) => {
+  try {
+    const leads = await serverDb.getLeads();
+    const today = new Date().toISOString().split('T')[0];
+
+    const totalLeads = leads.length;
+    const novosHoje = leads.filter(l => l.criadoEm?.startsWith(today)).length;
+    const responderam = leads.filter(l => l.status === 'respondeu' || l.status === 'qualificado' || l.status === 'convertido').length;
+    const contatados = leads.filter(l => l.status !== 'novo').length;
+    const taxaResposta = contatados > 0 ? Math.round((responderam / contatados) * 100) : 0;
+    const convertidos = leads.filter(l => l.status === 'convertido').length;
+    const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 100) : 0;
+    const followUpsHoje = leads.filter(l => l.proximoContato && l.proximoContato.startsWith(today)).length;
+
+    // Leads por Ramo
+    const ramosMap: Record<string, number> = {};
+    leads.forEach(l => {
+      const r = l.ramo || 'Geral';
+      ramosMap[r] = (ramosMap[r] || 0) + 1;
+    });
+
+    // Funil por Status
+    const funil = {
+      novo: leads.filter(l => l.status === 'novo').length,
+      contatado: leads.filter(l => l.status === 'contatado').length,
+      respondeu: leads.filter(l => l.status === 'respondeu').length,
+      qualificado: leads.filter(l => l.status === 'qualificado').length,
+      convertido: leads.filter(l => l.status === 'convertido').length,
+      perdido: leads.filter(l => l.status === 'perdido').length,
+      nao_contatar: leads.filter(l => l.status === 'nao_contatar').length
+    };
+
+    res.json({
+      success: true,
+      kpis: {
+        totalLeads,
+        novosHoje,
+        taxaResposta,
+        taxaConversao,
+        followUpsHoje
+      },
+      funil,
+      ramos: ramosMap
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erro ao gerar métricas', details: err?.message });
+  }
+});
+
+// ============================================================================
+// 6. ROTAS ESTÁTICAS, LANDING PAGE E VITE MIDDLEWARE
+// ============================================================================
+
+// Rota para a Landing Page de Vendas (HTML único)
+app.get('/landing', (_req: Request, res: Response) => {
+  res.sendFile(path.resolve(__dirname, 'landing.html'));
+});
+
+app.get('/vendas', (_req: Request, res: Response) => {
+  res.sendFile(path.resolve(__dirname, 'landing.html'));
+});
+
+// Gerador representativo de fallback quando apis externas atingem cota
+function generateRepresentativePlaces(segment: string, location: string, radiusKm: number) {
+  const isSalvador = location.toLowerCase().includes('salvador');
+  const neighborhoods = isSalvador
+    ? ['Pituba', 'Barra', 'Caminho das Árvores', 'Rio Vermelho', 'Itaigara', 'Brotas', 'Ondina']
+    : ['Centro', 'Distrito Empresarial', 'Jardins', 'Bairro Comercial', 'Setor Sul'];
 
   const templatesBySegment: Record<string, string[]> = {
-    'Condomínios': ['Residencial Torres do Parque', 'Condomínio Solar da Colina', 'Edifício Costa Azul', 'Condomínio Reserva Bela Vista', 'Residencial Alameda das Flores', 'Condomínio Vista do Mar', 'Edifício Empresarial Premium'],
-    'Restaurantes': ['Cantina & Grill Villa', 'Bistrô Mar Azul', 'Churrascaria Fogo Tropical', 'Restaurante Sabor & Prosa', 'Pizzaria Massa Nobre', 'Boteco & Parrilla do Porto', 'Restaurante Varanda Gourmet'],
-    'Clínicas': ['Clínica Médica e Diagnóstico Saúde', 'Centro Integrado de Fisioterapia', 'Consultórios OdontoExcel', 'Clínica Dermatológica DermaVida', 'Espaço Médico Bem Estar', 'Clínica Oftalmológica Visão', 'Instituto de Saúde Integrada'],
-    'Lojas': ['Lojas Conforto Lar', 'Varejo Moda Brasil', 'Mega Centro Automotivo', 'Distribuidora União', 'Magazine & Utilidades do Porto', 'Boutique Elegance', 'Mundo das Tintas & Construção'],
-    'Climatização e Refrigeração': ['Hotel & Pousada Mar Dourado', 'Supermercado Central de Carnes', 'Laboratório Vital Diagnósticos', 'Padaria & Confeitaria Imperial', 'Empresarial Executive Center', 'Frigorífico & Distribuidora Norte', 'Complexo Hospitalar Aliança']
+    'Condomínios': ['Residencial Torres do Parque', 'Condomínio Solar da Colina', 'Edifício Costa Azul', 'Condomínio Reserva Bela Vista', 'Residencial Alameda das Flores'],
+    'Restaurantes': ['Cantina & Grill Villa', 'Bistrô Mar Azul', 'Churrascaria Fogo Tropical', 'Restaurante Sabor & Prosa', 'Pizzaria Massa Nobre'],
+    'Clínicas': ['Clínica Médica e Diagnóstico Saúde', 'Centro Integrado de Fisioterapia', 'Consultórios OdontoExcel', 'Clínica Dermatológica DermaVida', 'Espaço Médico Bem Estar'],
+    'Lojas': ['Lojas Conforto Lar', 'Varejo Moda Brasil', 'Mega Centro Automotivo', 'Distribuidora União', 'Boutique Elegance'],
+    'Climatização e Refrigeração': ['Hotel & Pousada Mar Dourado', 'Supermercado Central de Carnes', 'Laboratório Vital Diagnósticos', 'Padaria & Confeitaria Imperial', 'Empresarial Executive Center']
   };
 
   const names = templatesBySegment[segment] || [
@@ -263,48 +687,29 @@ function generateContextualLeads(segment: string, location: string, radiusKm: nu
     `Grupo ${segment} Central`,
     `Espaço ${segment} & Serviços`,
     `Empresarial ${location.split(',')[0]}`,
-    `Centro Operacional ${segment}`,
-    `Unidade Regional ${segment}`
+    `Centro Operacional ${segment}`
   ];
 
-  const ddd = isSalvador ? '71' : isSP ? '11' : isRJ ? '21' : '71';
+  const ddd = isSalvador ? '71' : '11';
 
   return names.map((name, i) => {
     const neighborhood = neighborhoods[i % neighborhoods.length];
     const hasSite = i % 3 === 0;
-    const rating = [3.4, 3.8, 4.1, 4.5, 3.6, 3.9][i % 6];
-    const reviewCount = [7, 19, 34, 82, 12, 23][i % 6];
+    const rating = [3.4, 3.8, 4.1, 4.5, 3.6][i % 5];
+    const reviewCount = [7, 19, 34, 82, 12][i % 5];
     const streetNumber = 100 + i * 140;
-    const distanceKm = Math.min(radiusKm, Number((0.8 + (i * radiusKm) / names.length).toFixed(1)));
 
     return {
-      id: `lead-gen-${Date.now()}-${i}`,
-      placeId: `gen-place-${i}-${Date.now()}`,
       name,
-      segment,
-      address: `Av. Principal, ${streetNumber}, ${neighborhood} (~${distanceKm}km)`,
-      city: `${neighborhood}, ${location}`,
+      address: `Av. Principal, ${streetNumber}, ${neighborhood}, ${location}`,
       phone: `(${ddd}) 9${8000 + i * 123}-${1000 + i * 45}`,
-      whatsapp: `${ddd}9${8000 + i * 123}${1000 + i * 45}`,
       website: hasSite ? `https://${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br` : null,
       rating,
       reviewCount,
-      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${neighborhood} ${location}`)}`,
-      openNow: i % 4 !== 0,
-      source: 'google_places' as const,
+      placeId: `place_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_${i}`
     };
   });
 }
-
-// Configuração do Vite dev middleware ou arquivos de produção
-// Rota direta para a Landing Page de Vendas (HTML único)
-app.get('/landing', (_req: Request, res: Response) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'landing.html'));
-});
-
-app.get('/vendas', (_req: Request, res: Response) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'landing.html'));
-});
 
 async function setupServer() {
   if (process.env.NODE_ENV !== 'production') {

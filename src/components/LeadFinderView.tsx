@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Lead, SearchFilters } from '../types';
 import { calculateOpportunityScore } from '../services/scorer';
+import { api } from '../services/api';
 
 interface LeadFinderViewProps {
   existingLeads: Lead[];
@@ -74,56 +75,66 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
 
     setIsLoading(true);
     setErrorMessage('');
+    setNoticeMessage('');
 
     try {
-      const response = await fetch('/api/leads/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          segment: segment.trim(),
-          location: location.trim(),
-          radiusKm,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.notice && data.quotaExceeded) {
-        setNoticeMessage(data.notice);
-      } else {
-        setNoticeMessage('');
-      }
+      const data = await api.searchPlaces(location.trim(), segment.trim(), radiusKm);
 
       if (data.leads && Array.isArray(data.leads)) {
-        // Enriquecer cada lead com o cálculo de score LedsNet
         const enriched = data.leads.map((raw: any) => {
           const scoreData = calculateOpportunityScore({
-            website: raw.website,
-            rating: raw.rating,
-            reviewCount: raw.reviewCount,
-            phone: raw.phone,
+            website: raw.website || raw.site,
+            rating: raw.nota || raw.rating,
+            reviewCount: raw.numeroAvaliacoes || raw.reviewCount,
+            phone: raw.telefone || raw.phone,
           });
 
           return {
             ...raw,
-            opportunityScore: scoreData.score,
+            id: raw.id,
+            nome: raw.nome || raw.name,
+            name: raw.nome || raw.name,
+            telefone: raw.telefone || raw.phone,
+            phone: raw.telefone || raw.phone,
+            ramo: raw.ramo || raw.segment || segment,
+            segment: raw.ramo || raw.segment || segment,
+            regiao: raw.regiao || raw.city || location,
+            city: raw.regiao || raw.city || location,
+            endereco: raw.endereco || raw.address,
+            address: raw.endereco || raw.address,
+            nota: raw.nota || raw.rating || 3.8,
+            rating: raw.nota || raw.rating || 3.8,
+            numeroAvaliacoes: raw.numeroAvaliacoes || raw.reviewCount || 10,
+            reviewCount: raw.numeroAvaliacoes || raw.reviewCount || 10,
+            site: raw.site || raw.website || null,
+            website: raw.site || raw.website || null,
+            score: raw.score || scoreData.score,
+            opportunityScore: raw.score || scoreData.score,
             scoreBreakdown: scoreData.breakdown,
-            status: 'novo' as const,
+            status: raw.status || ('novo' as const),
+            isDuplicate: raw.isDuplicate,
             notes: '',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            origem: 'places' as const,
+            source: 'google_places' as const,
+            criadoEm: raw.criadoEm || new Date().toISOString(),
+            atualizadoEm: raw.atualizadoEm || new Date().toISOString(),
           } as Lead;
         });
 
         // Ordena por maior Score de Oportunidade primeiro (mais urgentes)
-        enriched.sort((a: Lead, b: Lead) => b.opportunityScore - a.opportunityScore);
+        enriched.sort((a: Lead, b: Lead) => (b.opportunityScore || b.score || 0) - (a.opportunityScore || a.score || 0));
         setSearchResults(enriched);
         setHasSearched(true);
+
+        if (data.duplicatesFound > 0) {
+          setNoticeMessage(`${data.duplicatesFound} estabelecimentos encontrados já existem no seu banco de dados e foram marcados.`);
+        }
       } else {
         setErrorMessage('Nenhum estabelecimento encontrado com os filtros atuais.');
       }
     } catch (err: any) {
       console.warn('Falha na busca:', err);
-      setErrorMessage('Não foi possível conectar ao servidor de busca. Verifique sua conexão.');
+      setErrorMessage(err?.message || 'Não foi possível conectar ao servidor de busca. Verifique sua chave de acesso e conexão.');
     } finally {
       setIsLoading(false);
     }

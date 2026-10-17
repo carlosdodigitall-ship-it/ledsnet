@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "Registro de negócio ou oportunidade de prospecção local",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nome": { "type": "string" },
+        "endereco": { "type": "string" },
+        "telefone": { "type": "string", "description": "Formato E.164 sem o +" },
+        "place_id": { "type": "string" },
+        "nota": { "type": "number" },
+        "numeroAvaliacoes": { "type": "number" },
+        "site": { "type": "string" },
+        "ramo": { "type": "string" },
+        "regiao": { "type": "string" },
+        "score": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["novo", "contatado", "respondeu", "qualificado", "convertido", "perdido", "nao_contatar"]
+        },
+        "motivoPerda": { "type": "string" },
+        "proximoContato": { "type": "string", "format": "date-time" },
+        "origem": {
+          "type": "string",
+          "enum": ["places", "formulario", "importacao"]
+        },
+        "criadoEm": { "type": "string", "format": "date-time" },
+        "atualizadoEm": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "nome", "telefone", "ramo", "regiao", "score", "status", "origem", "criadoEm", "atualizadoEm"]
+    },
+    "Interacao": {
+      "title": "Interacao",
+      "description": "Histórico de mensagens e anotações vinculadas ao lead",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "leadId": { "type": "string" },
+        "tipo": {
+          "type": "string",
+          "enum": ["mensagem_enviada", "resposta", "anotacao"]
+        },
+        "conteudo": { "type": "string" },
+        "criadoEm": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "leadId", "tipo", "conteudo", "criadoEm"]
+    },
+    "ModeloMensagem": {
+      "title": "ModeloMensagem",
+      "description": "Templates de abordagem com substituição de variáveis",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titulo": { "type": "string" },
+        "texto": { "type": "string" }
+      },
+      "required": ["id", "titulo", "texto"]
+    },
+    "Configuracao": {
+      "title": "Configuracao",
+      "description": "Parâmetros operacionais do sistema e Evolution API",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "pesoSemSite": { "type": "number" },
+        "pesoBaixaNota": { "type": "number" },
+        "pesoPoucasAvaliacoes": { "type": "number" },
+        "limiteDiarioEnvios": { "type": "number" },
+        "intervaloMinimoSegundos": { "type": "number" },
+        "intervaloMaximoSegundos": { "type": "number" },
+        "instanciaEvolution": { "type": "string" }
+      },
+      "required": ["id", "limiteDiarioEnvios", "intervaloMinimoSegundos", "intervaloMaximoSegundos"]
+    },
+    "LogEnvio": {
+      "title": "LogEnvio",
+      "description": "Registro de auditoria de disparos de mensagens WhatsApp",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "leadId": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["sucesso", "erro"]
+        },
+        "erro": { "type": "string" },
+        "criadoEm": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "leadId", "status", "criadoEm"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Coleção principal de leads e oportunidades"
+    },
+    "/interacoes/{interacaoId}": {
+      "schema": "Interacao",
+      "description": "Histórico de contatos e conversas por lead"
+    },
+    "/modelos_mensagem/{modeloId}": {
+      "schema": "ModeloMensagem",
+      "description": "Modelos de texto personalizados"
+    },
+    "/configuracoes/{configId}": {
+      "schema": "Configuracao",
+      "description": "Configurações de score e da Evolution API"
+    },
+    "/logs_envio/{logId}": {
+      "schema": "LogEnvio",
+      "description": "Logs de disparos e auditoria de envio"
+    }
+  }
+}

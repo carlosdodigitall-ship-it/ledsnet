@@ -3,48 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LedsNet — Encontre clientes antes que a concorrência encontre</title>
-  <meta name="description" content="Plataforma de inteligência de prospecção comercial local. Descubra empresas sem site ou com baixa nota no Google Places e converse no WhatsApp.">
   
+  <!-- SEO & Meta Tags Primárias -->
+  <title>LedsNet — Encontre clientes antes que a concorrência encontre</title>
+  <meta name="description" content="Descubra empresas sem site, com poucas avaliações ou reputação desassistida no Google Places. Priorize oportunidades e fale no WhatsApp com abordagem personalizada em poucos cliques.">
+  <meta name="keywords" content="captação de leads, prospecção b2b, google places api, prospecção whatsapp, leads locais, oportunidade de vendas">
+  <meta name="author" content="LedsNet">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ledsnet.com.br/">
+  <meta property="og:title" content="LedsNet — Encontre clientes antes que a concorrência encontre">
+  <meta property="og:description" content="Busque negócios por região e ramo, priorize os melhores com Opportunity Score e converse pelo WhatsApp sem precisar salvar na agenda.">
+  <meta property="og:image" content="https://ledsnet.com.br/og-image.jpg">
+  
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LedsNet — Captação Inteligente de Leads Locais">
+  <meta name="twitter:description" content="Plataforma de inteligência de prospecção comercial local baseada em dados públicos do Google Places.">
+  
+  <!-- Favicon SVG Embutido -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='%231D4ED8'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230B1F44'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%233B82F6'/%3E%3Ccircle cx='23' cy='9' r='3' fill='%2360A5FA'/%3E%3C/svg%3E">
+
+  <!-- Tipografia Inter (Google Fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
   <style>
     /* ==========================================================================
-       RESET & CORES DO DESIGN SYSTEM LEDSNET
+       1. DESIGN TOKENS & RESET
        ========================================================================== */
     :root {
-      --azul-principal: #1D4ED8;
-      --azul-hover: #1E40AF;
-      --azul-escuro: #0B1F44;
-      --azul-claro: #EEF4FF;
-      --azul-destaque: #60A5FA;
-      --branco: #FFFFFF;
-      --cinza-texto: #4B5563;
-      --cinza-suave: #9CA3AF;
-      --borda-suave: #E2E8F0;
-      --verde-zap: #10B981;
-      --sombra-card: 0 10px 25px -5px rgba(29, 78, 216, 0.07), 0 8px 10px -6px rgba(11, 31, 68, 0.04);
-      --sombra-hover: 0 20px 30px -10px rgba(29, 78, 216, 0.12), 0 10px 15px -5px rgba(11, 31, 68, 0.06);
+      --bg-white: #FFFFFF;
+      --bg-light: #EEF4FF;
+      --bg-dark: #0B1F44;
+      --bg-dark-surface: #102654;
+      --bg-dark-card: rgba(16, 38, 84, 0.7);
+      
+      --blue-primary: #1D4ED8;
+      --blue-gradient-start: #1D4ED8;
+      --blue-gradient-end: #3B82F6;
+      --blue-accent: #60A5FA;
+      --blue-highlight: #93C5FD;
+      --blue-subtle: rgba(29, 78, 216, 0.08);
+      --blue-border: rgba(29, 78, 216, 0.14);
+      --blue-border-dark: rgba(96, 165, 250, 0.22);
+      
+      --text-main: #0B1F44;
+      --text-muted: #475569;
+      --text-light: #94A3B8;
+      --text-white: #FFFFFF;
+      
+      --whatsapp-green: #10B981;
+      --whatsapp-dark: #059669;
+      --whatsapp-hover: #047857;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      
+      --shadow-sm: 0 4px 12px rgba(11, 31, 68, 0.04);
+      --shadow-md: 0 12px 30px -6px rgba(29, 78, 216, 0.08), 0 4px 12px rgba(11, 31, 68, 0.03);
+      --shadow-lg: 0 24px 48px -10px rgba(29, 78, 216, 0.16), 0 8px 16px rgba(11, 31, 68, 0.06);
+      --shadow-floating: 0 30px 60px -12px rgba(29, 78, 216, 0.25), 0 0 40px rgba(59, 130, 246, 0.15);
+      
+      --transition-smooth: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    * {
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
 
     html {
       scroll-behavior: smooth;
+      font-size: 16px;
     }
 
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-      background-color: var(--branco);
-      color: var(--azul-escuro);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-white);
+      color: var(--text-main);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       overflow-x: hidden;
     }
 
@@ -53,76 +99,319 @@
       color: inherit;
     }
 
-    ul {
-      list-style: none;
+    button {
+      font-family: inherit;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    /* Acessibilidade Foco Visível */
+    a:focus-visible,
+    button:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--blue-accent);
+      outline-offset: 3px;
+      border-radius: var(--radius-sm);
     }
 
     .container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 0 1.5rem;
     }
 
     /* ==========================================================================
-       CABEÇALHO FIXO
+       2. COMPONENTES COMUNS & GRADIENTES
        ========================================================================== */
-    header {
+    .gradient-text {
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--blue-primary) 55%, var(--blue-gradient-end) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradientShift 7s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      padding: 0.95rem 1.75rem;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+      transition: var(--transition-smooth);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue-gradient-start) 0%, var(--blue-gradient-end) 100%);
+      color: var(--text-white);
+      box-shadow: 0 8px 24px -4px rgba(29, 78, 216, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -4px rgba(29, 78, 216, 0.48);
+      background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
+    }
+
+    .btn-whatsapp {
+      background: linear-gradient(135deg, var(--whatsapp-green) 0%, var(--whatsapp-dark) 100%);
+      color: var(--text-white);
+      box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-whatsapp:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -4px rgba(16, 185, 129, 0.48);
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+
+    .btn-secondary {
+      background: var(--bg-white);
+      color: var(--blue-primary);
+      border: 1px solid var(--blue-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-light);
+      border-color: var(--blue-accent);
+      transform: translateY(-2px);
+    }
+
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      color: var(--text-white);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-glass:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Seções e Espaçamentos Generosos */
+    .section {
+      padding: 100px 0;
+      position: relative;
+    }
+
+    .section-light {
+      background-color: var(--bg-light);
+    }
+
+    .section-dark {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Ruído de fundo sutil para seções escuras */
+    .section-dark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(59, 130, 246, 0.18) 1px, transparent 1px),
+                        radial-gradient(rgba(29, 78, 216, 0.12) 1px, transparent 1px);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 4.5rem;
+    }
+
+    .section-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1.1rem;
+      border-radius: 9999px;
+      background: rgba(29, 78, 216, 0.09);
+      color: var(--blue-primary);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-dark .section-badge {
+      background: rgba(96, 165, 250, 0.16);
+      color: var(--blue-accent);
+      border: 1px solid rgba(96, 165, 250, 0.25);
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 3.8vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-dark .section-title {
+      color: var(--text-white);
+    }
+
+    .section-desc {
+      font-size: clamp(1rem, 1.8vw, 1.18rem);
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    .section-dark .section-desc {
+      color: var(--text-light);
+    }
+
+    /* Cards com cantos arredondados de 20px e borda azul transparente */
+    .premium-card {
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition-smooth);
+      position: relative;
+    }
+
+    .premium-card:hover {
+      border-color: var(--blue-accent);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-4px);
+    }
+
+    /* Glassmorphism para cards em seções escuras */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      transition: var(--transition-smooth);
+    }
+
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--blue-accent);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ==========================================================================
+       3. ANIMAÇÕES & REVEAL (IntersectionObserver)
+       ========================================================================== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Float para o Mockup */
+    @keyframes floatDashboard {
+      0%, 100% {
+        transform: translateY(0px) rotateX(2deg);
+      }
+      50% {
+        transform: translateY(-10px) rotateX(0deg);
+      }
+    }
+
+    /* ==========================================================================
+       4. CABEÇALHO FIXO & MENU EM TELA CHEIA MOBILE
+       ========================================================================== */
+    .site-header {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
-      background-color: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--borda-suave);
+      height: 80px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
       z-index: 1000;
       transition: box-shadow 0.3s ease;
     }
 
-    header.scrolled {
-      box-shadow: 0 4px 20px rgba(11, 31, 68, 0.06);
+    .site-header.scrolled {
+      box-shadow: 0 10px 30px rgba(11, 31, 68, 0.06);
     }
 
-    .nav-container {
+    .nav-wrapper {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 72px;
+      height: 100%;
     }
 
-    .logo {
-      display: flex;
+    .brand-logo {
+      display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.65rem;
+      font-size: 1.45rem;
       font-weight: 800;
-      font-size: 1.35rem;
-      letter-spacing: -0.03em;
-      color: var(--azul-escuro);
+      letter-spacing: -0.04em;
+      color: var(--bg-dark);
     }
 
-    .logo-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background-color: var(--azul-principal);
-      box-shadow: 0 0 12px var(--azul-destaque);
-    }
-
-    .nav-menu {
+    .brand-symbol {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--blue-gradient-start), var(--blue-gradient-end));
       display: flex;
       align-items: center;
-      gap: 2rem;
+      justify-content: center;
+      color: var(--text-white);
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2.2rem;
     }
 
     .nav-link {
       font-size: 0.95rem;
       font-weight: 600;
-      color: var(--cinza-texto);
+      color: var(--text-muted);
       transition: color 0.2s ease;
+      position: relative;
     }
 
     .nav-link:hover {
-      color: var(--azul-principal);
+      color: var(--blue-primary);
     }
 
     .nav-actions {
@@ -131,69 +420,80 @@
       gap: 1rem;
     }
 
-    .btn {
-      display: inline-flex;
+    .menu-toggle {
+      display: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--bg-light);
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.4rem;
-      border-radius: 12px;
-      font-size: 0.9rem;
+      color: var(--bg-dark);
+      cursor: pointer;
+    }
+
+    /* Menu Fullscreen Mobile */
+    .mobile-fullscreen-menu {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 31, 68, 0.98);
+      backdrop-filter: blur(20px);
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2.5rem 2rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .mobile-fullscreen-menu.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-menu-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mobile-menu-close {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-white);
+    }
+
+    .mobile-nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 1.8rem;
+      text-align: center;
+    }
+
+    .mobile-nav-link {
+      font-size: 1.6rem;
       font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border: none;
+      color: var(--text-white);
+      transition: color 0.2s;
     }
 
-    .btn-primary {
-      background-color: var(--azul-principal);
-      color: var(--branco);
-      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
-    }
-
-    .btn-primary:hover {
-      background-color: var(--azul-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.35);
-    }
-
-    .btn-secondary {
-      background-color: var(--azul-claro);
-      color: var(--azul-principal);
-    }
-
-    .btn-secondary:hover {
-      background-color: #E0ECFF;
-      color: var(--azul-hover);
-    }
-
-    .btn-whatsapp {
-      background-color: #059669;
-      color: var(--branco);
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-    }
-
-    .btn-whatsapp:hover {
-      background-color: #047857;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
-    }
-
-    .mobile-menu-btn {
-      display: none;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0.5rem;
-      color: var(--azul-escuro);
+    .mobile-nav-link:hover {
+      color: var(--blue-accent);
     }
 
     /* ==========================================================================
-       HERO SECTION COM MOCKUP EM CSS PURO
+       5. HERO SECTION
        ========================================================================== */
-    .hero {
-      padding: 140px 0 80px;
-      background: radial-gradient(circle at 50% 10%, #F5F9FF 0%, #FFFFFF 70%);
+    .hero-section {
+      padding: 160px 0 60px;
+      background: radial-gradient(circle at 50% 15%, #F0F5FF 0%, var(--bg-white) 65%);
       text-align: center;
       position: relative;
     }
@@ -202,315 +502,648 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.4rem 1rem;
-      background-color: var(--azul-claro);
-      color: var(--azul-principal);
+      padding: 0.45rem 1.25rem;
       border-radius: 9999px;
-      font-size: 0.85rem;
+      background: var(--bg-light);
+      border: 1px solid var(--blue-border);
+      color: var(--blue-primary);
+      font-size: 0.88rem;
       font-weight: 700;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero-badge svg {
+      color: var(--blue-accent);
     }
 
     .hero-title {
-      font-size: clamp(2.2rem, 5vw, 3.8rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.03em;
-      color: var(--azul-escuro);
-      max-width: 860px;
-      margin: 0 auto 1.5rem;
+      font-size: clamp(2.4rem, 5.2vw, 4rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      max-width: 960px;
+      margin: 0 auto 1.75rem;
     }
 
     .hero-subtitle {
-      font-size: clamp(1rem, 2vw, 1.25rem);
-      color: var(--cinza-texto);
-      max-width: 700px;
-      margin: 0 auto 2.5rem;
-      font-weight: 500;
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      color: var(--text-muted);
+      max-width: 780px;
+      margin: 0 auto 2.8rem;
+      line-height: 1.6;
     }
 
     .hero-cta {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 1rem;
+      gap: 1.25rem;
       flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+
+    .trust-points {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2.2rem;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
       margin-bottom: 4rem;
     }
 
-    /* Mockup de Dashboard Desenho em CSS Puro */
-    .mockup-wrapper {
-      max-width: 1000px;
-      margin: 0 auto;
-      background: var(--branco);
-      border-radius: 20px;
-      padding: 1rem;
-      border: 1px solid var(--borda-suave);
-      box-shadow: 0 25px 50px -12px rgba(11, 31, 68, 0.15), 0 0 0 1px rgba(29, 78, 216, 0.05);
-    }
-
-    .mockup-window {
-      background: #0B132B;
-      border-radius: 14px;
-      overflow: hidden;
-      color: #E2E8F0;
-      text-align: left;
-      font-size: 0.8rem;
-    }
-
-    .mockup-header {
-      background: #070D1E;
-      padding: 0.8rem 1.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #1E293B;
-    }
-
-    .window-dots {
-      display: flex;
-      gap: 6px;
-    }
-
-    .window-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-
-    .dot-red { background-color: #EF4444; }
-    .dot-yellow { background-color: #F59E0B; }
-    .dot-green { background-color: #10B981; }
-
-    .mockup-search-bar {
+    .trust-point-item {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      background: #152238;
-      padding: 0.4rem 0.8rem;
-      border-radius: 8px;
-      color: #94A3B8;
-      font-size: 0.75rem;
-      width: 50%;
     }
 
-    .mockup-content {
-      padding: 1.25rem;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
+    .trust-point-item svg {
+      color: var(--blue-primary);
     }
 
-    .mockup-lead-card {
-      background: #111C35;
-      border: 1px solid #1E293B;
-      border-radius: 10px;
-      padding: 1rem;
+    /* ==========================================================================
+       6. MOCKUP DO DASHBOARD (DESTAQUE CENTRAL)
+       ========================================================================== */
+    .dashboard-mockup-container {
+      perspective: 1200px;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 1rem;
     }
 
-    .lead-tag {
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #60A5FA;
-      text-transform: uppercase;
-      margin-bottom: 0.3rem;
+    .dashboard-mockup {
+      background: #0B162C;
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(96, 165, 250, 0.25);
+      box-shadow: var(--shadow-floating);
+      overflow: hidden;
+      animation: floatDashboard 8s ease-in-out infinite;
+      position: relative;
     }
 
-    .lead-name {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: #FFFFFF;
-      margin-bottom: 0.4rem;
-    }
-
-    .lead-details {
-      font-size: 0.72rem;
-      color: #94A3B8;
-      margin-bottom: 0.8rem;
-    }
-
-    .lead-score-pill {
-      display: inline-flex;
+    .dashboard-topbar {
+      background: #070F20;
+      padding: 0.9rem 1.5rem;
+      display: flex;
       align-items: center;
-      gap: 0.3rem;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #EF4444; }
+    .dot-min { background-color: #F59E0B; }
+    .dot-max { background-color: #10B981; }
+
+    .topbar-search-bar {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.4rem 1rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: var(--blue-accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 48%;
+      max-width: 440px;
+    }
+
+    .topbar-meta {
+      font-size: 0.75rem;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .topbar-meta .badge-live {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
       padding: 0.2rem 0.5rem;
       border-radius: 6px;
       font-weight: 700;
       font-size: 0.7rem;
+    }
+
+    .dashboard-inner {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      min-height: 480px;
+      text-align: left;
+    }
+
+    .mockup-sidebar {
+      background: #081124;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .mockup-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94A3B8;
+    }
+
+    .mockup-nav-item.active {
+      background: rgba(29, 78, 216, 0.25);
+      color: #60A5FA;
+      border: 1px solid rgba(96, 165, 250, 0.3);
+    }
+
+    .mockup-main {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      background: #0B162C;
+    }
+
+    .mockup-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .mockup-kpi-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .mockup-kpi-title {
+      font-size: 0.7rem;
+      color: #94A3B8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.3rem;
+    }
+
+    .mockup-kpi-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--text-white);
       font-family: 'JetBrains Mono', monospace;
     }
 
-    .score-high {
+    .mockup-content-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 1.25rem;
+    }
+
+    /* Tabela de Leads no Mockup */
+    .mockup-leads-table {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+
+    .mockup-section-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mockup-table-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.75rem;
+    }
+
+    .mockup-lead-name {
+      font-weight: 700;
+      color: var(--text-white);
+    }
+
+    .mockup-lead-sub {
+      font-size: 0.68rem;
+      color: #94A3B8;
+    }
+
+    .badge-status {
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .badge-novo { background: rgba(59, 130, 246, 0.2); color: #93C5FD; }
+    .badge-contatado { background: rgba(245, 158, 11, 0.2); color: #FCD34D; }
+    .badge-qualificado { background: rgba(16, 185, 129, 0.2); color: #6EE7B7; }
+
+    /* Gráfico de Barras Animado */
+    .mockup-chart-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mockup-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+      height: 120px;
+      padding-top: 1rem;
+    }
+
+    .mockup-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .mockup-bar {
+      width: 100%;
+      background: linear-gradient(180deg, var(--blue-accent) 0%, var(--blue-primary) 100%);
+      border-radius: 4px 4px 0 0;
+      transition: height 1s ease;
+    }
+
+    .mockup-bar-label {
+      font-size: 0.65rem;
+      color: #94A3B8;
+    }
+
+    /* Card Flutuante de Score */
+    .mockup-floating-score {
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      background: rgba(11, 31, 68, 0.95);
+      border: 1px solid var(--blue-accent);
+      border-radius: 16px;
+      padding: 1.1rem 1.4rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .score-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
       background: rgba(16, 185, 129, 0.15);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .score-warn {
-      background: rgba(245, 158, 11, 0.15);
-      color: #FBBF24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-
-    .mockup-whatsapp-btn {
-      margin-top: 0.8rem;
+      border: 2px solid #10B981;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.4rem;
-      background: #059669;
-      color: #FFFFFF;
-      padding: 0.4rem;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      font-weight: 700;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #34D399;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .mockup-disclaimer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-light);
+      margin-top: 1rem;
+      font-style: italic;
     }
 
     /* ==========================================================================
-       SEÇÃO: COMO FUNCIONA
+       7. FAIXA DE LOGOS
        ========================================================================== */
-    .section {
-      padding: 90px 0;
-    }
-
-    .section-header {
+    .logos-strip {
+      padding: 50px 0;
+      border-top: 1px solid var(--blue-border);
+      border-bottom: 1px solid var(--blue-border);
+      background: #FAFCFF;
       text-align: center;
-      max-width: 680px;
-      margin: 0 auto 4rem;
     }
 
-    .section-kicker {
-      font-size: 0.85rem;
-      font-weight: 800;
+    .logos-label {
+      font-size: 0.88rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--azul-principal);
-      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+      margin-bottom: 1.8rem;
     }
 
-    .section-title {
-      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--azul-escuro);
-      margin-bottom: 1rem;
+    .logos-grid {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
     }
 
-    .section-subtitle {
-      font-size: 1.05rem;
-      color: var(--cinza-texto);
+    .logo-item {
+      padding: 0.75rem 1.8rem;
+      background: var(--bg-white);
+      border: 1px dashed #CBD5E1;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    .steps-grid {
+    /* ==========================================================================
+       8. O PROBLEMA (3 DORES)
+       ========================================================================== */
+    .pains-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 2rem;
     }
 
-    .step-card {
-      background: var(--branco);
-      border: 1px solid var(--borda-suave);
-      border-radius: 18px;
-      padding: 2.2rem;
-      box-shadow: var(--sombra-card);
-      position: relative;
-      transition: all 0.3s ease;
+    .pain-card {
+      background: var(--bg-white);
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-smooth);
     }
 
-    .step-card:hover {
+    .pain-card:hover {
       transform: translateY(-4px);
-      box-shadow: var(--sombra-hover);
-      border-color: var(--azul-destaque);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(239, 68, 68, 0.35);
     }
 
-    .step-number {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: var(--azul-claro);
-      color: var(--azul-principal);
-      font-weight: 800;
-      font-size: 1.2rem;
+    .pain-icon-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #DC2626;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 1.5rem;
-      font-family: 'JetBrains Mono', monospace;
     }
 
-    .step-title {
-      font-size: 1.2rem;
-      font-weight: 700;
+    .pain-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--bg-dark);
       margin-bottom: 0.8rem;
-      color: var(--azul-escuro);
+      letter-spacing: -0.02em;
     }
 
-    .step-desc {
-      font-size: 0.95rem;
-      color: var(--cinza-texto);
+    .pain-desc {
+      font-size: 0.98rem;
+      color: var(--text-muted);
       line-height: 1.6;
     }
 
     /* ==========================================================================
-       SEÇÃO: RECURSOS (6 CARDS)
+       9. COMO FUNCIONA (3 PASSOS COM LINHA CONECTORA ANIMADA)
        ========================================================================== */
-    .bg-light {
-      background-color: #F8FAFC;
+    .steps-container {
+      position: relative;
     }
 
-    .features-grid {
+    .steps-connector {
+      position: absolute;
+      top: 45px;
+      left: 15%;
+      width: 70%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--blue-primary) 0%, var(--blue-accent) 50%, var(--whatsapp-green) 100%);
+      z-index: 1;
+      opacity: 0.35;
+    }
+
+    .steps-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1.75rem;
+      gap: 2.5rem;
+      position: relative;
+      z-index: 2;
     }
 
-    .feature-card {
-      background: var(--branco);
-      border: 1px solid var(--borda-suave);
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: var(--sombra-card);
-      transition: all 0.3s ease;
+    .step-card {
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: var(--radius-lg);
+      padding: 2.8rem 2.2rem;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+      transition: var(--transition-smooth);
     }
 
-    .feature-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--sombra-hover);
-      border-color: var(--azul-destaque);
+    .step-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--blue-accent);
+      box-shadow: var(--shadow-lg);
     }
 
-    .feature-icon-wrapper {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: var(--azul-claro);
-      color: var(--azul-principal);
+    .step-number-bubble {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue-gradient-start), var(--blue-gradient-end));
+      color: var(--text-white);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 1.25rem;
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin: 0 auto 1.8rem;
+      box-shadow: 0 8px 20px rgba(29, 78, 216, 0.3);
+      font-family: 'JetBrains Mono', monospace;
     }
 
-    .feature-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 0.6rem;
-      color: var(--azul-escuro);
+    .step-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 0.9rem;
+      letter-spacing: -0.02em;
     }
 
-    .feature-desc {
-      font-size: 0.92rem;
-      color: var(--cinza-texto);
-      line-height: 1.55;
+    .step-desc {
+      font-size: 0.96rem;
+      color: var(--text-muted);
+      line-height: 1.6;
     }
 
     /* ==========================================================================
-       SEÇÃO: NÚMEROS DE DESTAQUE (PLACEHOLDERS)
+       10. RECURSOS (6 CARDS COM EFEITO 3D TILT)
+       ========================================================================== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      perspective: 1000px;
+    }
+
+    .feature-tilt-card {
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      box-shadow: var(--shadow-md);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      transform-style: preserve-3d;
+      cursor: default;
+    }
+
+    .feature-tilt-card:hover {
+      border-color: var(--blue-accent);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--bg-light);
+      color: var(--blue-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      box-shadow: inset 0 0 0 1px var(--blue-border);
+    }
+
+    .feature-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .feature-text {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       11. COMPARATIVO (ANTES E DEPOIS)
+       ========================================================================== */
+    .comparison-table-wrapper {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .comparison-table th {
+      padding: 1.5rem 2rem;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border-bottom: 1px solid var(--blue-border);
+    }
+
+    .comparison-table th.col-feature {
+      width: 38%;
+      color: var(--bg-dark);
+    }
+
+    .comparison-table th.col-without {
+      width: 31%;
+      background: #F8FAFC;
+      color: #64748B;
+    }
+
+    .comparison-table th.col-with {
+      width: 31%;
+      background: var(--bg-light);
+      color: var(--blue-primary);
+    }
+
+    .comparison-table td {
+      padding: 1.4rem 2rem;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+      font-size: 0.95rem;
+      vertical-align: middle;
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comparison-table td.col-without {
+      background: #F8FAFC;
+      color: #64748B;
+    }
+
+    .comparison-table td.col-with {
+      background: rgba(238, 244, 255, 0.5);
+      color: var(--bg-dark);
+      font-weight: 600;
+    }
+
+    .table-status-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .icon-fail { color: #EF4444; }
+    .icon-success { color: var(--blue-primary); font-weight: 700; }
+
+    /* ==========================================================================
+       12. NÚMEROS DE DESTAQUE (PLACEHOLDERS)
        ========================================================================== */
     .stats-section {
-      background: var(--azul-escuro);
-      color: var(--branco);
-      padding: 70px 0;
+      background: linear-gradient(135deg, var(--bg-dark) 0%, #0F2A5C 100%);
+      color: var(--text-white);
+      padding: 80px 0;
     }
 
     .stats-grid {
@@ -520,321 +1153,476 @@
       text-align: center;
     }
 
+    .stat-box {
+      padding: 1.5rem;
+    }
+
     .stat-number {
-      font-size: 2.5rem;
-      font-weight: 800;
-      color: var(--azul-destaque);
+      font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+      font-weight: 900;
+      color: var(--blue-accent);
       margin-bottom: 0.5rem;
       font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.03em;
     }
 
     .stat-label {
-      font-size: 0.95rem;
-      color: #CBD5E1;
-      font-weight: 500;
+      font-size: 1rem;
+      color: var(--text-light);
+      font-weight: 600;
     }
 
     /* ==========================================================================
-       SEÇÃO: DEPOIMENTOS (PLACEHOLDERS)
+       13. DEPOIMENTOS (PLACEHOLDERS)
        ========================================================================== */
     .testimonials-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1.75rem;
+      gap: 2rem;
     }
 
     .testimonial-card {
-      background: var(--branco);
-      border: 1px solid var(--borda-suave);
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: var(--sombra-card);
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      box-shadow: var(--shadow-md);
       display: flex;
-      flex-col: column;
+      flex-direction: column;
       justify-content: space-between;
+      transition: var(--transition-smooth);
+    }
+
+    .testimonial-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--blue-accent);
     }
 
     .testimonial-quote {
-      font-size: 0.95rem;
-      color: var(--cinza-texto);
+      font-size: 1.05rem;
+      color: var(--text-main);
       font-style: italic;
-      margin-bottom: 1.5rem;
-      line-height: 1.6;
+      line-height: 1.65;
+      margin-bottom: 2rem;
+      position: relative;
     }
 
-    .testimonial-author {
+    .testimonial-user {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 1rem;
     }
 
-    .author-avatar {
-      width: 44px;
-      height: 44px;
+    .testimonial-avatar {
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
-      background: var(--azul-claro);
-      color: var(--azul-principal);
-      font-weight: 700;
+      background: var(--bg-light);
+      border: 2px solid var(--blue-accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.9rem;
-    }
-
-    .author-name {
-      font-weight: 700;
-      font-size: 0.95rem;
-      color: var(--azul-escuro);
-    }
-
-    .author-role {
       font-size: 0.8rem;
-      color: var(--cinza-suave);
+      font-weight: 700;
+      color: var(--blue-primary);
+      text-align: center;
+    }
+
+    .testimonial-name {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--bg-dark);
+    }
+
+    .testimonial-role {
+      font-size: 0.82rem;
+      color: var(--text-muted);
     }
 
     /* ==========================================================================
-       SEÇÃO: PLANOS (FALE CONOSCO)
+       14. SEGURANÇA E LGPD (SEÇÃO ESCURA)
        ========================================================================== */
-    .plans-box {
-      max-width: 800px;
-      margin: 0 auto;
-      background: linear-gradient(135deg, #F8FAFC 0%, var(--azul-claro) 100%);
-      border: 1px solid var(--borda-suave);
-      border-radius: 24px;
-      padding: 3.5rem 2.5rem;
-      text-align: center;
-      box-shadow: var(--sombra-card);
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
     }
 
-    .plans-title {
-      font-size: 2rem;
+    .security-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem;
+      backdrop-filter: blur(12px);
+      transition: var(--transition-smooth);
+    }
+
+    .security-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: var(--blue-accent);
+      transform: translateY(-4px);
+    }
+
+    .security-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(96, 165, 250, 0.15);
+      color: var(--blue-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .security-title {
+      font-size: 1.25rem;
       font-weight: 800;
-      color: var(--azul-escuro);
+      color: var(--text-white);
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.02em;
+    }
+
+    .security-desc {
+      font-size: 0.95rem;
+      color: var(--text-light);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       15. PLANOS (FALE CONOSCO / SOB MEDIDA)
+       ========================================================================== */
+    .plans-container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .custom-plan-card {
+      background: linear-gradient(135deg, var(--bg-white) 0%, var(--bg-light) 100%);
+      border: 2px solid var(--blue-border);
+      border-radius: var(--radius-xl);
+      padding: 3.5rem 3rem;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .custom-plan-badge {
+      display: inline-block;
+      padding: 0.4rem 1.2rem;
+      border-radius: 9999px;
+      background: var(--blue-primary);
+      color: var(--text-white);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1.5rem;
+    }
+
+    .custom-plan-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
       margin-bottom: 1rem;
     }
 
-    .plans-desc {
-      font-size: 1.05rem;
-      color: var(--cinza-texto);
-      max-width: 600px;
+    .custom-plan-desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 640px;
       margin: 0 auto 2.5rem;
+      line-height: 1.6;
     }
 
-    .plans-benefits {
+    .plan-features-list {
       display: flex;
       justify-content: center;
       gap: 2rem;
       flex-wrap: wrap;
-      margin-bottom: 2.5rem;
-      text-align: left;
+      margin-bottom: 3rem;
     }
 
-    .benefit-item {
+    .plan-feature-item {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      font-size: 0.95rem;
       font-weight: 600;
-      color: var(--azul-escuro);
+      font-size: 0.98rem;
+      color: var(--bg-dark);
     }
 
     /* ==========================================================================
-       SEÇÃO: PERGUNTAS FREQUENTES (ACCORDION)
+       16. PERGUNTAS FREQUENTES (ACORDEÃO INTERATIVO)
        ========================================================================== */
-    .faq-container {
-      max-width: 820px;
+    .faq-wrapper {
+      max-width: 860px;
       margin: 0 auto;
     }
 
-    .faq-item {
-      border: 1px solid var(--borda-suave);
-      border-radius: 14px;
-      margin-bottom: 1rem;
+    .faq-accordion-item {
+      background: var(--bg-white);
+      border: 1px solid var(--blue-border);
+      border-radius: 16px;
+      margin-bottom: 1.25rem;
       overflow: hidden;
-      background: var(--branco);
-      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-smooth);
     }
 
-    .faq-question {
+    .faq-accordion-item:hover {
+      border-color: var(--blue-accent);
+    }
+
+    .faq-trigger {
       width: 100%;
       text-align: left;
-      padding: 1.35rem 1.5rem;
-      background: none;
-      border: none;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--azul-escuro);
+      padding: 1.5rem 1.8rem;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--bg-dark);
       cursor: pointer;
     }
 
-    .faq-icon {
-      width: 20px;
-      height: 20px;
+    .faq-icon-arrow {
+      width: 22px;
+      height: 22px;
       transition: transform 0.3s ease;
-      stroke: var(--azul-principal);
+      color: var(--blue-primary);
       flex-shrink: 0;
     }
 
-    .faq-item.active .faq-icon {
+    .faq-accordion-item.open .faq-icon-arrow {
       transform: rotate(180deg);
     }
 
-    .faq-answer {
+    .faq-body {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.35s ease, padding 0.3s ease;
-      color: var(--cinza-texto);
-      font-size: 0.95rem;
-      line-height: 1.6;
-      padding: 0 1.5rem;
+      transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), padding 0.3s ease;
+      padding: 0 1.8rem;
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.65;
     }
 
-    .faq-item.active .faq-answer {
-      max-height: 300px;
-      padding-bottom: 1.35rem;
+    .faq-accordion-item.open .faq-body {
+      max-height: 380px;
+      padding-bottom: 1.5rem;
     }
 
     /* ==========================================================================
-       CHAMADA FINAL & RODAPÉ
+       17. CHAMADA FINAL (CTA) & RODAPÉ
        ========================================================================== */
-    .cta-banner {
-      background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul-principal) 100%);
-      color: var(--branco);
-      border-radius: 24px;
-      padding: 4rem 2rem;
-      text-align: center;
+    .cta-banner-wrapper {
+      max-width: 1140px;
       margin: 0 auto;
-      max-width: 1100px;
     }
 
-    .cta-title {
-      font-size: clamp(1.8rem, 4vw, 2.8rem);
-      font-weight: 800;
-      margin-bottom: 1rem;
+    .cta-banner {
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--blue-primary) 70%, var(--blue-gradient-end) 100%);
+      color: var(--text-white);
+      border-radius: var(--radius-xl);
+      padding: 4.5rem 3rem;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      overflow: hidden;
     }
 
-    .cta-desc {
-      font-size: 1.05rem;
+    .cta-banner-title {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+
+    .cta-banner-desc {
+      font-size: clamp(1rem, 2vw, 1.2rem);
       color: #E2E8F0;
-      max-width: 620px;
-      margin: 0 auto 2.5rem;
+      max-width: 680px;
+      margin: 0 auto 2.8rem;
+      line-height: 1.6;
     }
 
-    footer {
-      background: #070D1E;
-      color: #94A3B8;
-      padding: 60px 0 30px;
-      border-top: 1px solid #1E293B;
-      font-size: 0.9rem;
-    }
-
-    .footer-content {
+    .cta-buttons {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
       flex-wrap: wrap;
-      gap: 1.5rem;
-      padding-bottom: 2.5rem;
-      border-bottom: 1px solid #1E293B;
     }
 
-    .footer-links {
+    .site-footer {
+      background: #060E1D;
+      color: #94A3B8;
+      padding: 70px 0 35px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.92rem;
+    }
+
+    .footer-top {
       display: flex;
-      gap: 1.5rem;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 2rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .footer-links a:hover {
-      color: var(--branco);
+    .footer-brand {
+      color: var(--text-white);
+    }
+
+    .footer-nav {
+      display: flex;
+      gap: 1.8rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-nav a:hover {
+      color: var(--text-white);
     }
 
     .footer-bottom {
       padding-top: 2rem;
-      text-align: center;
-      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.84rem;
+    }
+
+    /* Barra Fixa de CTA no Rodapé Mobile */
+    .mobile-fixed-cta-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--blue-border);
+      padding: 0.75rem 1rem;
+      z-index: 999;
+      box-shadow: 0 -8px 20px rgba(11, 31, 68, 0.08);
+    }
+
+    .mobile-fixed-cta-bar .cta-buttons-inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .mobile-fixed-cta-bar .btn {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.85rem;
+      width: 100%;
     }
 
     /* ==========================================================================
-       ANIMAÇÕES SUAVES DE ENTRADA AO ROLAR
+       18. RESPONSIVIDADE & PREFERS-REDUCED-MOTION
        ========================================================================== */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* ==========================================================================
-       RESPONSIVIDADE (MOBILE & TABLETS)
-       ========================================================================== */
-    @media (max-width: 992px) {
+    @media (max-width: 1024px) {
+      .steps-connector { display: none; }
       .steps-grid,
       .features-grid,
-      .testimonials-grid {
+      .pains-grid,
+      .testimonials-grid,
+      .security-grid {
         grid-template-columns: repeat(2, 1fr);
       }
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
       }
-      .mockup-content {
+      .dashboard-inner {
         grid-template-columns: 1fr;
+      }
+      .mockup-sidebar {
+        display: none;
+      }
+      .mockup-kpis {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
 
     @media (max-width: 768px) {
-      .nav-menu {
-        position: fixed;
-        top: 72px;
-        left: -100%;
-        width: 100%;
-        background: var(--branco);
-        flex-direction: column;
-        padding: 2rem;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        transition: left 0.3s ease;
+      .nav-links, .nav-actions .btn-primary {
+        display: none;
       }
-
-      .nav-menu.open {
-        left: 0;
+      .menu-toggle {
+        display: flex;
       }
-
-      .mobile-menu-btn {
-        display: block;
+      .hero-section {
+        padding-top: 120px;
       }
-
-      .steps-grid,
-      .features-grid,
-      .testimonials-grid,
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .hero {
-        padding-top: 110px;
-      }
-
       .hero-cta {
         flex-direction: column;
         width: 100%;
       }
-
       .hero-cta .btn {
         width: 100%;
       }
-
-      .plans-box {
+      .steps-grid,
+      .features-grid,
+      .pains-grid,
+      .testimonials-grid,
+      .security-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .mockup-content-grid {
+        grid-template-columns: 1fr;
+      }
+      .mockup-floating-score {
+        position: static;
+        margin-top: 1rem;
+        width: 100%;
+        justify-content: center;
+      }
+      .custom-plan-card {
         padding: 2.5rem 1.5rem;
       }
-
-      .footer-content {
+      .cta-banner {
+        padding: 3rem 1.5rem;
+      }
+      .cta-buttons {
         flex-direction: column;
-        text-align: center;
+        width: 100%;
+      }
+      .cta-buttons .btn {
+        width: 100%;
+      }
+      .mobile-fixed-cta-bar {
+        display: block;
+      }
+      body {
+        padding-bottom: 74px; /* Espaço para a barra fixa mobile */
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+      .dashboard-mockup {
+        animation: none !important;
       }
     }
   </style>
@@ -844,23 +1632,36 @@
   <!-- ==========================================================================
        1. CABEÇALHO FIXO
        ========================================================================== -->
-  <header id="header">
-    <div class="container nav-container">
-      <a href="#" class="logo">
-        <span class="logo-dot"></span>
+  <header class="site-header" id="siteHeader">
+    <div class="container nav-wrapper">
+      <a href="#" class="brand-logo" aria-label="Página inicial do LedsNet">
+        <div class="brand-symbol">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
         <span>LedsNet</span>
       </a>
 
-      <nav class="nav-menu" id="navMenu">
-        <a href="#como-funciona" class="nav-link">Como funciona</a>
+      <nav class="nav-links" aria-label="Navegação principal">
         <a href="#recursos" class="nav-link">Recursos</a>
+        <a href="#como-funciona" class="nav-link">Como funciona</a>
+        <a href="#dashboard-demo" class="nav-link">Dashboard</a>
         <a href="#perguntas-frequentes" class="nav-link">Perguntas frequentes</a>
       </nav>
 
       <div class="nav-actions">
-        <a href="/" class="btn btn-primary">Ver demonstração</a>
-        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <a href="/" class="btn btn-primary" title="Ver demonstração da plataforma">
+          <span>Ver demonstração</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+
+        <!-- Botão hambúrguer no celular -->
+        <button class="menu-toggle" id="menuToggleBtn" aria-label="Abrir menu de navegação" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -870,35 +1671,67 @@
     </div>
   </header>
 
+  <!-- Menu Mobile em Tela Cheia -->
+  <div class="mobile-fullscreen-menu" id="mobileMenu" aria-hidden="true">
+    <div class="mobile-menu-header">
+      <div class="brand-logo" style="color: var(--text-white);">
+        <div class="brand-symbol">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <span>LedsNet</span>
+      </div>
+      <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Fechar menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="mobile-nav-links">
+      <a href="#recursos" class="mobile-nav-link">Recursos</a>
+      <a href="#como-funciona" class="mobile-nav-link">Como funciona</a>
+      <a href="#dashboard-demo" class="mobile-nav-link">Dashboard</a>
+      <a href="#perguntas-frequentes" class="mobile-nav-link">Perguntas frequentes</a>
+    </nav>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+      <a href="/" class="btn btn-primary" style="width: 100%;">Ver demonstração</a>
+      <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20conhecer%20o%20LedsNet." target="_blank" class="btn btn-whatsapp" style="width: 100%;">Falar no WhatsApp</a>
+    </div>
+  </div>
+
   <!-- ==========================================================================
-       2. HERO SECTION COM MOCKUP EM CSS PURO
+       2. HERO SECTION
        ========================================================================== -->
-  <section class="hero">
+  <section class="hero-section">
     <div class="container">
       <div class="hero-badge reveal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
-        <span>Captação Inteligente de Oportunidades Locais</span>
+        <span>Captação de leads inteligente</span>
       </div>
 
       <h1 class="hero-title reveal">
-        Encontre clientes antes que a concorrência encontre.
+        <span class="gradient-text">Encontre clientes antes que a concorrência encontre.</span>
       </h1>
 
       <p class="hero-subtitle reveal">
-        Descubra empresas na sua cidade que não têm site, estão com poucas avaliações ou reputação desassistida. Priorize contatos quentes e fale no WhatsApp com abordagem personalizada em poucos cliques.
+        Busque negócios por região e ramo, priorize os melhores e fale com eles pelo WhatsApp, tudo em um painel só.
       </p>
 
       <div class="hero-cta reveal">
-        <a href="/" class="btn btn-primary" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
-          <span>Ver demonstração ao vivo</span>
+        <a href="/" class="btn btn-primary" style="padding: 1.05rem 2rem; font-size: 1.02rem;">
+          <span>Ver demonstração</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
         </a>
-        <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20conhecer%20o%20LedsNet%20para%20o%20meu%20neg%C3%B3cio." target="_blank" class="btn btn-whatsapp" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
+        <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20conhecer%20o%20LedsNet." target="_blank" class="btn btn-whatsapp" style="padding: 1.05rem 2rem; font-size: 1.02rem;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
           </svg>
@@ -906,236 +1739,514 @@
         </a>
       </div>
 
-      <!-- Mockup do Dashboard desenhado exclusivamente em CSS -->
-      <div class="mockup-wrapper reveal">
-        <div class="mockup-window">
-          <div class="mockup-header">
-            <div class="window-dots">
-              <span class="window-dot dot-red"></span>
-              <span class="window-dot dot-yellow"></span>
-              <span class="window-dot dot-green"></span>
+      <!-- Três pontos de confiança -->
+      <div class="trust-points reveal">
+        <div class="trust-point-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span>Sem cadastro ou senhas</span>
+        </div>
+        <div class="trust-point-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          <span>Dados protegidos pela LGPD</span>
+        </div>
+        <div class="trust-point-item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span>Integração com Google Places</span>
+        </div>
+      </div>
+
+      <!-- ==========================================================================
+           3. MOCKUP DO DASHBOARD (DESTAQUE CENTRAL EM HTML/CSS)
+           ========================================================================== -->
+      <!-- 
+        ÁREA DE MOCKUP PREPARADA:
+        Substituir este mockup desenhado em CSS por um print real do sistema quando disponível:
+        <img src="screenshot-dashboard-real.png" alt="Dashboard LedsNet" class="mockup-img-real" style="width:100%; border-radius:24px;" />
+      -->
+      <div class="dashboard-mockup-container reveal" id="dashboard-demo">
+        <div class="dashboard-mockup">
+          <!-- Topbar da Janela -->
+          <div class="dashboard-topbar">
+            <div class="window-controls">
+              <span class="window-dot dot-close"></span>
+              <span class="window-dot dot-min"></span>
+              <span class="window-dot dot-max"></span>
             </div>
-            <div class="mockup-search-bar">
+            <div class="topbar-search-bar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <span>Salvador, BA · Ramo: Climatização & Restaurantes · Raio: 15 km</span>
+              <span>Região: Salvador, BA · Ramo: Climatização & Restaurantes · Raio: 15km</span>
             </div>
-            <div style="font-size: 0.7rem; color: #60A5FA; font-weight: 700;">● Painel Ativo</div>
+            <div class="topbar-meta">
+              <span class="badge-live">● Google Places Conectado</span>
+            </div>
           </div>
 
-          <div class="mockup-content">
-            <!-- Card 1 -->
-            <div class="mockup-lead-card">
-              <div class="lead-tag">Restaurantes</div>
-              <div class="lead-name">Churrascaria Boi & Brasa</div>
-              <div class="lead-details">Av. Otávio Mangabeira, Pituba<br>★ 3.6 (12 avaliações) · Sem site cadastrado</div>
-              <div class="lead-score-pill score-high">Opportunity Score: 92/100</div>
-              <div class="mockup-whatsapp-btn">
-                <span>Falar no WhatsApp com Template</span>
+          <!-- Corpo do Dashboard -->
+          <div class="dashboard-inner">
+            <!-- Barra Lateral Mockup -->
+            <div class="mockup-sidebar">
+              <div class="mockup-nav-item active">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                <span>Dashboard</span>
+              </div>
+              <div class="mockup-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>Buscar Leads</span>
+              </div>
+              <div class="mockup-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span>Funil WhatsApp</span>
+              </div>
+              <div class="mockup-nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                <span>Tarefas do Dia</span>
               </div>
             </div>
 
-            <!-- Card 2 -->
-            <div class="mockup-lead-card">
-              <div class="lead-tag">Condomínios</div>
-              <div class="lead-name">Residencial Torres do Parque</div>
-              <div class="lead-details">Rua Afonso Celso, Barra<br>★ 3.8 (19 avaliações) · Sem site registrado</div>
-              <div class="lead-score-pill score-high">Opportunity Score: 88/100</div>
-              <div class="mockup-whatsapp-btn">
-                <span>Falar no WhatsApp com Template</span>
+            <!-- Painel Principal Mockup -->
+            <div class="mockup-main">
+              <!-- Cards de KPI -->
+              <div class="mockup-kpis">
+                <div class="mockup-kpi-card">
+                  <div class="mockup-kpi-title">Total de Leads</div>
+                  <div class="mockup-kpi-value">124</div>
+                </div>
+                <div class="mockup-kpi-card">
+                  <div class="mockup-kpi-title">Sem Website</div>
+                  <div class="mockup-kpi-value" style="color: #60A5FA;">58%</div>
+                </div>
+                <div class="mockup-kpi-card">
+                  <div class="mockup-kpi-title">Em Follow-up</div>
+                  <div class="mockup-kpi-value" style="color: #FBBF24;">18</div>
+                </div>
+                <div class="mockup-kpi-card">
+                  <div class="mockup-kpi-title">Convertidos</div>
+                  <div class="mockup-kpi-value" style="color: #34D399;">12</div>
+                </div>
+              </div>
+
+              <!-- Grid com Lista de Leads e Gráfico de Barras -->
+              <div class="mockup-content-grid">
+                <!-- Tabela de Leads -->
+                <div class="mockup-leads-table">
+                  <div class="mockup-section-title">
+                    <span>Leads Recentes Priorizados</span>
+                    <span style="font-size: 0.7rem; color: #60A5FA; font-weight: normal;">Ordenar por Score</span>
+                  </div>
+
+                  <div class="mockup-table-row">
+                    <div>
+                      <div class="mockup-lead-name">Churrascaria Boi & Brasa</div>
+                      <div class="mockup-lead-sub">Pituba · ★ 3.6 (12 avaliações)</div>
+                    </div>
+                    <div style="color: #F87171; font-size: 0.7rem; font-weight: 600;">Sem site</div>
+                    <div><span class="badge-status badge-novo">Novo</span></div>
+                    <div style="color: #34D399; font-weight: 800; font-family: monospace;">Score 94</div>
+                  </div>
+
+                  <div class="mockup-table-row">
+                    <div>
+                      <div class="mockup-lead-name">Residencial Torres do Parque</div>
+                      <div class="mockup-lead-sub">Barra · ★ 3.8 (19 avaliações)</div>
+                    </div>
+                    <div style="color: #F87171; font-size: 0.7rem; font-weight: 600;">Sem site</div>
+                    <div><span class="badge-status badge-contatado">Contatado</span></div>
+                    <div style="color: #34D399; font-weight: 800; font-family: monospace;">Score 88</div>
+                  </div>
+
+                  <div class="mockup-table-row">
+                    <div>
+                      <div class="mockup-lead-name">Centro Integrado de Saúde</div>
+                      <div class="mockup-lead-sub">Itaigara · ★ 4.1 (28 avaliações)</div>
+                    </div>
+                    <div style="color: #FBBF24; font-size: 0.7rem; font-weight: 600;">Desatualizado</div>
+                    <div><span class="badge-status badge-qualificado">Qualificado</span></div>
+                    <div style="color: #FBBF24; font-weight: 800; font-family: monospace;">Score 76</div>
+                  </div>
+                </div>
+
+                <!-- Gráfico de Barras Animado -->
+                <div class="mockup-chart-card">
+                  <div class="mockup-section-title">
+                    <span>Leads por Estágio</span>
+                    <span style="font-size: 0.7rem; color: #94A3B8;">Hoje</span>
+                  </div>
+                  <div class="mockup-bars">
+                    <div class="mockup-bar-col">
+                      <div class="mockup-bar" style="height: 85%;"></div>
+                      <span class="mockup-bar-label">Novos</span>
+                    </div>
+                    <div class="mockup-bar-col">
+                      <div class="mockup-bar" style="height: 60%;"></div>
+                      <span class="mockup-bar-label">Contato</span>
+                    </div>
+                    <div class="mockup-bar-col">
+                      <div class="mockup-bar" style="height: 42%;"></div>
+                      <span class="mockup-bar-label">Resp.</span>
+                    </div>
+                    <div class="mockup-bar-col">
+                      <div class="mockup-bar" style="height: 28%; background: linear-gradient(180deg, #34D399, #059669);"></div>
+                      <span class="mockup-bar-label">Fechado</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- Card 3 -->
-            <div class="mockup-lead-card">
-              <div class="lead-tag">Clínicas Médicas</div>
-              <div class="lead-name">Centro Integrado de Saúde</div>
-              <div class="lead-details">Av. Tancredo Neves, Caminho das Árvores<br>★ 4.1 (28 avaliações) · Site desatualizado</div>
-              <div class="lead-score-pill score-warn">Opportunity Score: 76/100</div>
-              <div class="mockup-whatsapp-btn">
-                <span>Falar no WhatsApp com Template</span>
-              </div>
+          <!-- Card Flutuante de Score de Oportunidade -->
+          <div class="mockup-floating-score">
+            <div class="score-circle">94</div>
+            <div>
+              <div style="font-size: 0.8rem; font-weight: 800; color: #FFFFFF;">Alta Urgência de Contato</div>
+              <div style="font-size: 0.72rem; color: #94A3B8;">Sem site cadastrado + Baixa nota no Google</div>
             </div>
           </div>
         </div>
+
+        <p class="mockup-disclaimer">Dados ilustrativos. Os dados reais são extraídos diretamente do Google Places da região escolhida.</p>
       </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       3. COMO FUNCIONA (3 PASSOS NUMERADOS)
+       4. FAIXA DE LOGOS
        ========================================================================== -->
-  <section class="section" id="como-funciona">
+  <section class="logos-strip">
     <div class="container">
-      <div class="section-header reveal">
-        <div class="section-kicker">Fluxo Simples</div>
-        <h2 class="section-title">Como funciona o LedsNet</h2>
-        <p class="section-subtitle">Sem processos complexos ou cadastros demorados. Três passos para iniciar sua prospecção hoje.</p>
-      </div>
-
-      <div class="steps-grid">
-        <div class="step-card reveal">
-          <div class="step-number">01</div>
-          <h3 class="step-title">Escolha a região e o ramo</h3>
-          <p class="step-desc">
-            Digite a cidade ou bairro desejado e o nicho de mercado (ex.: condomínios, restaurantes, consultórios ou lojas). Defina o raio de busca em quilômetros.
-          </p>
+      <div class="logos-label">Usado por equipes de [segmento]</div>
+      <div class="logos-grid">
+        <!-- 
+          SUBSTITUIR PELOS LOGOS REAIS DE CLIENTES QUANDO DISPONÍVEIS:
+          <img src="logo-cliente-1.svg" alt="Cliente 1" class="client-logo-img" />
+        -->
+        <div class="logo-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          <span>[Logo do cliente]</span>
         </div>
-
-        <div class="step-card reveal">
-          <div class="step-number">02</div>
-          <h3 class="step-title">Veja os leads priorizados por score</h3>
-          <p class="step-desc">
-            O algoritmo analisa automaticamente a presença online de cada negócio no Google Places e calcula o Opportunity Score com base em notas, volume de avaliações e ausência de site.
-          </p>
+        <div class="logo-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 6 12 12 16 14"></polygon></svg>
+          <span>[Logo do cliente]</span>
         </div>
-
-        <div class="step-card reveal">
-          <div class="step-number">03</div>
-          <h3 class="step-title">Acompanhe o funil e fale pelo WhatsApp</h3>
-          <p class="step-desc">
-            Adicione os melhores contatos ao funil comercial, selecione modelos de abordagem prontos e inicie a conversa no WhatsApp diretamente, sem precisar salvar o número na agenda.
-          </p>
+        <div class="logo-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          <span>[Logo do cliente]</span>
+        </div>
+        <div class="logo-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>[Logo do cliente]</span>
+        </div>
+        <div class="logo-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <span>[Logo do cliente]</span>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       4. RECURSOS (6 CARDS)
-       ========================================================================== -->
-  <section class="section bg-light" id="recursos">
-    <div class="container">
-      <div class="section-header reveal">
-        <div class="section-kicker">Recursos Completos</div>
-        <h2 class="section-title">Tudo o que você precisa para prospectar clientes locais</h2>
-        <p class="section-subtitle">Projetado com foco em agilidade comercial e facilidade de uso diário.</p>
-      </div>
-
-      <div class="features-grid">
-        <!-- Card 1 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-          </div>
-          <h3 class="feature-title">Busca por região</h3>
-          <p class="feature-desc">Mapeie bairros específicos ou regiões metropolitanas inteiras com raio configurável de 3km a 50km em poucos segundos.</p>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </div>
-          <h3 class="feature-title">Score de oportunidade</h3>
-          <p class="feature-desc">Algoritmo transparente que prioriza empresas sem site próprio, com notas baixas ou poucas avaliações, prontas para receber propostas.</p>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
-          </div>
-          <h3 class="feature-title">Funil de vendas</h3>
-          <p class="feature-desc">Organize seus contatos em 6 estágios claros: Novo, Contatado, Respondeu, Qualificado, Convertido e Perdido, com valor financeiro estimado.</p>
-        </div>
-
-        <!-- Card 4 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-          </div>
-          <h3 class="feature-title">Contato direto pelo WhatsApp</h3>
-          <p class="feature-desc">Abra conversas instantâneas via Click-to-Chat com modelos de mensagens personalizados que substituem o nome e o ramo da empresa automaticamente.</p>
-        </div>
-
-        <!-- Card 5 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-          </div>
-          <h3 class="feature-title">Dashboard com métricas</h3>
-          <p class="feature-desc">Acompanhe KPIs em tempo real: total de leads, taxa de resposta, taxa de conversão final e lista de follow-ups agendados para o dia.</p>
-        </div>
-
-        <!-- Card 6 -->
-        <div class="feature-card reveal">
-          <div class="feature-icon-wrapper">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          </div>
-          <h3 class="feature-title">Exportação em CSV</h3>
-          <p class="feature-desc">Exporte todos os contatos, telefones, histórico de interações e anotações para planilhas Excel formatadas em UTF-8 com 1 clique.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       5. NÚMEROS DE DESTAQUE (PLACEHOLDERS)
-       ========================================================================== -->
-  <section class="stats-section">
-    <div class="container">
-      <div class="stats-grid">
-        <div class="stat-item reveal">
-          <div class="stat-number">[placeholder]</div>
-          <div class="stat-label">[placeholder métrica 1]</div>
-        </div>
-        <div class="stat-item reveal">
-          <div class="stat-number">[placeholder]</div>
-          <div class="stat-label">[placeholder métrica 2]</div>
-        </div>
-        <div class="stat-item reveal">
-          <div class="stat-number">[placeholder]</div>
-          <div class="stat-label">[placeholder métrica 3]</div>
-        </div>
-        <div class="stat-item reveal">
-          <div class="stat-number">[placeholder]</div>
-          <div class="stat-label">[placeholder métrica 4]</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ==========================================================================
-       6. DEPOIMENTOS (PLACEHOLDERS)
+       5. O PROBLEMA (3 DORES)
        ========================================================================== -->
   <section class="section">
     <div class="container">
       <div class="section-header reveal">
-        <div class="section-kicker">Experiências Reais</div>
-        <h2 class="section-title">O que dizem os usuários do LedsNet</h2>
-        <p class="section-subtitle">Resultados práticos de empresas e prestadores de serviços que transformaram sua rotina de captação.</p>
+        <div class="section-badge" style="color: #DC2626; background: rgba(239, 68, 68, 0.1);">O Desafio Atual</div>
+        <h2 class="section-title">Prospectar clientes ainda é trabalho manual.</h2>
+        <p class="section-desc">A maioria das equipes comerciais perde horas preciosas procurando negócios locais sem critérios claros, resultando em esforço desperdiçado e poucas vendas fechadas.</p>
+      </div>
+
+      <div class="pains-grid">
+        <!-- Dor 1 -->
+        <div class="pain-card reveal">
+          <div class="pain-icon-wrapper">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h3 class="pain-title">Leads espalhados em planilhas e anotações</h3>
+          <p class="pain-desc">Números de telefone anotados no bloco de notas, contatos soltos em conversas de WhatsApp e históricos perdidos que dificultam saber quem já foi abordado.</p>
+        </div>
+
+        <!-- Dor 2 -->
+        <div class="pain-card reveal">
+          <div class="pain-icon-wrapper">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 14"></polyline>
+            </svg>
+          </div>
+          <h3 class="pain-title">Contatos que nunca recebem retorno</h3>
+          <p class="pain-desc">Sem um sistema de agendamento e tarefas claras para o dia, os follow-ups são esquecidos e potenciais clientes esfriam antes mesmo da proposta.</p>
+        </div>
+
+        <!-- Dor 3 -->
+        <div class="pain-card reveal">
+          <div class="pain-icon-wrapper">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <h3 class="pain-title">Não saber quais negócios valem o esforço</h3>
+          <p class="pain-desc">Contatar empresas que já têm presença digital consolidada gera rejeição imediata, enquanto negócios com carência real de serviço passam despercebidos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       6. COMO FUNCIONA (3 PASSOS COM LINHA CONECTORA ANIMADA)
+       ========================================================================== -->
+  <section class="section section-light" id="como-funciona">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-badge">Fluxo Simples & Eficiente</div>
+        <h2 class="section-title">Como funciona o LedsNet</h2>
+        <p class="section-desc">Três etapas integradas para transformar o mapa da sua cidade em novos contratos fechados.</p>
+      </div>
+
+      <div class="steps-container">
+        <div class="steps-connector"></div>
+        <div class="steps-grid">
+          <!-- Passo 1 -->
+          <div class="step-card reveal">
+            <div class="step-number-bubble">01</div>
+            <h3 class="step-title">Escolha a região e o ramo</h3>
+            <p class="step-desc">Digite a cidade ou bairro desejado, selecione o ramo do seu negócio (condomínios, clínicas, restaurantes, etc.) e defina o raio em quilômetros.</p>
+          </div>
+
+          <!-- Passo 2 -->
+          <div class="step-card reveal">
+            <div class="step-number-bubble">02</div>
+            <h3 class="step-title">Receba os leads priorizados por score</h3>
+            <p class="step-desc">O LedsNet analisa automaticamente os dados no Google Places e calcula o Opportunity Score destacando empresas sem site próprio ou com notas baixas.</p>
+          </div>
+
+          <!-- Passo 3 -->
+          <div class="step-card reveal">
+            <div class="step-number-bubble">03</div>
+            <h3 class="step-title">Acompanhe o funil e feche pelo WhatsApp</h3>
+            <p class="step-desc">Envie mensagens pré-configuradas com 1 clique sem salvar o número no celular e gerencie a evolução de cada lead no pipeline comercial de 6 estágios.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       7. RECURSOS (SEIS CARDS COM EFEITO 3D TILT)
+       ========================================================================== -->
+  <section class="section" id="recursos">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-badge">Tecnologia Completa</div>
+        <h2 class="section-title">Recursos projetados para vender mais rápido</h2>
+        <p class="section-desc">Cada detalhe do LedsNet foi concebido para eliminar atritos na prospecção B2B ativa.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Recurso 1 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          </div>
+          <h3 class="feature-name">Busca por região e ramo</h3>
+          <p class="feature-text">Mapeie qualquer bairro ou município com raio de 5km a 50km usando dados oficiais e atualizados do Google Places.</p>
+        </div>
+
+        <!-- Recurso 2 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+          <h3 class="feature-name">Score de oportunidade</h3>
+          <p class="feature-text">Critérios transparentes que pontuam negócios sem site (+40 pts), baixa nota (+25 pts) e poucas avaliações (+15 pts).</p>
+        </div>
+
+        <!-- Recurso 3 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </div>
+          <h3 class="feature-name">Funil de vendas com seis status</h3>
+          <p class="feature-text">Organização por estágios: Novo, Contatado, Respondeu, Qualificado, Convertido e Perdido, com estimativa de valor da oportunidade.</p>
+        </div>
+
+        <!-- Recurso 4 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          </div>
+          <h3 class="feature-name">Contato direto pelo WhatsApp</h3>
+          <p class="feature-text">Modelos de mensagens prontas com preenchimento automático do nome da empresa e Click-to-Chat sem salvar na agenda.</p>
+        </div>
+
+        <!-- Recurso 5 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </div>
+          <h3 class="feature-name">Dashboard com métricas e gráficos</h3>
+          <p class="feature-text">Acompanhamento de KPIs em tempo real: volume de novos leads, taxa de resposta, taxa de conversão e tarefas pendentes do dia.</p>
+        </div>
+
+        <!-- Recurso 6 -->
+        <div class="feature-tilt-card reveal" data-tilt>
+          <div class="feature-icon-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </div>
+          <h3 class="feature-name">Exportação em CSV</h3>
+          <p class="feature-text">Baixe todos os contatos qualificados, números de WhatsApp, histórico de conversas e anotações para Excel formatado com 1 clique.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       8. COMPARATIVO (ANTES E DEPOIS DO LEDSNET)
+       ========================================================================== -->
+  <section class="section section-light">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-badge">Transformação Comercial</div>
+        <h2 class="section-title">Antes e depois do LedsNet</h2>
+        <p class="section-desc">Veja a diferença na rotina de prospecção da sua empresa com inteligência de dados.</p>
+      </div>
+
+      <div class="comparison-table-wrapper reveal">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th class="col-feature">Critério</th>
+              <th class="col-without">Sem LedsNet</th>
+              <th class="col-with">Com LedsNet</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Tempo para encontrar leads</strong></td>
+              <td class="col-without">
+                <span class="table-status-icon"><span class="icon-fail">✕</span> Horas navegando no mapa manualmente</span>
+              </td>
+              <td class="col-with">
+                <span class="table-status-icon"><span class="icon-success">✓</span> Dezenas de leads qualificados em segundos</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Organização dos contatos</strong></td>
+              <td class="col-without">
+                <span class="table-status-icon"><span class="icon-fail">✕</span> Planilhas confusas e anotações soltas</span>
+              </td>
+              <td class="col-with">
+                <span class="table-status-icon"><span class="icon-success">✓</span> Funil de vendas integrado em 6 estágios</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Acompanhamento de follow-ups</strong></td>
+              <td class="col-without">
+                <span class="table-status-icon"><span class="icon-fail">✕</span> Contatos esquecidos e negócios perdidos</span>
+              </td>
+              <td class="col-with">
+                <span class="table-status-icon"><span class="icon-success">✓</span> Lista de tarefas diárias com alertas de data</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Contato com o cliente</strong></td>
+              <td class="col-without">
+                <span class="table-status-icon"><span class="icon-fail">✕</span> Salvar número na agenda e digitar mensagem</span>
+              </td>
+              <td class="col-with">
+                <span class="table-status-icon"><span class="icon-success">✓</span> 1 clique para abrir conversa com texto pronto</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       9. NÚMEROS DE DESTAQUE (PLACEHOLDERS)
+       ========================================================================== -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-box reveal">
+          <div class="stat-number" data-target="[X]">[X]</div>
+          <div class="stat-label">leads encontrados</div>
+        </div>
+        <div class="stat-box reveal">
+          <div class="stat-number" data-target="[X]">[X]%</div>
+          <div class="stat-label">de taxa de resposta</div>
+        </div>
+        <div class="stat-box reveal">
+          <div class="stat-number" data-target="[X]">[X]</div>
+          <div class="stat-label">minutos para a primeira busca</div>
+        </div>
+        <div class="stat-box reveal">
+          <div class="stat-number" data-target="[X]">[X]</div>
+          <div class="stat-label">regiões disponíveis</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       10. DEPOIMENTOS (PLACEHOLDERS)
+       ========================================================================== -->
+  <!-- Substituir apenas por depoimentos reais e autorizados. -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-badge">Experiências Verificadas</div>
+        <h2 class="section-title">O que dizem os clientes</h2>
+        <p class="section-desc">Resultados de quem utiliza o LedsNet para alavancar suas operações de vendas locais.</p>
       </div>
 
       <div class="testimonials-grid">
+        <!-- Depoimento 1 -->
         <div class="testimonial-card reveal">
-          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre facilidade de prospecção]"</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">[P1]</div>
+          <p class="testimonial-quote">"[Depoimento real: espaço reservado exclusivamente para feedback de cliente real sobre a agilidade na prospecção comercial]."</p>
+          <div class="testimonial-user">
+            <div class="testimonial-avatar">[Foto do cliente]</div>
             <div>
-              <div class="author-name">[nome]</div>
-              <div class="author-role">[cargo / empresa]</div>
+              <div class="testimonial-name">[Nome]</div>
+              <div class="testimonial-role">[Cargo] · [Empresa]</div>
             </div>
           </div>
         </div>
 
+        <!-- Depoimento 2 -->
         <div class="testimonial-card reveal">
-          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre aumento de contatos no WhatsApp]"</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">[P2]</div>
+          <p class="testimonial-quote">"[Depoimento real: espaço reservado exclusivamente para feedback de cliente real sobre o ganho de produtividade com o WhatsApp]."</p>
+          <div class="testimonial-user">
+            <div class="testimonial-avatar">[Foto do cliente]</div>
             <div>
-              <div class="author-name">[nome]</div>
-              <div class="author-role">[cargo / empresa]</div>
+              <div class="testimonial-name">[Nome]</div>
+              <div class="testimonial-role">[Cargo] · [Empresa]</div>
             </div>
           </div>
         </div>
 
+        <!-- Depoimento 3 -->
         <div class="testimonial-card reveal">
-          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre o cálculo do Opportunity Score]"</p>
-          <div class="testimonial-author">
-            <div class="author-avatar">[P3]</div>
+          <p class="testimonial-quote">"[Depoimento real: espaço reservado exclusivamente para feedback de cliente real sobre a eficácia do Opportunity Score]."</p>
+          <div class="testimonial-user">
+            <div class="testimonial-avatar">[Foto do cliente]</div>
             <div>
-              <div class="author-name">[nome]</div>
-              <div class="author-role">[cargo / empresa]</div>
+              <div class="testimonial-name">[Nome]</div>
+              <div class="testimonial-role">[Cargo] · [Empresa]</div>
             </div>
           </div>
         </div>
@@ -1144,105 +2255,229 @@
   </section>
 
   <!-- ==========================================================================
-       7. PLANOS (FALE CONOSCO / SEM PREÇOS FIXOS)
+       11. SEGURANÇA E LGPD (SEÇÃO EM AZUL ESCURO)
        ========================================================================== -->
-  <section class="section bg-light" id="planos">
+  <section class="section section-dark">
+    <div class="container" style="position: relative; z-index: 2;">
+      <div class="section-header reveal">
+        <div class="section-badge">Privacidade & Conformidade</div>
+        <h2 class="section-title">Segurança e transparência total</h2>
+        <p class="section-desc">Desenvolvido em rigorosa observância à Lei Geral de Proteção de Dados (LGPD) e às boas práticas de segurança digital.</p>
+      </div>
+
+      <div class="security-grid">
+        <!-- Bloco 1 -->
+        <div class="security-card reveal">
+          <div class="security-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 class="security-title">Acesso privado sem cadastro</h3>
+          <p class="security-desc">Sua equipe acessa a plataforma diretamente via chave privada exclusiva. Não há formulários de login público, eliminando vulnerabilidades de senhas fracas ou vazamentos de credenciais.</p>
+        </div>
+
+        <!-- Bloco 2 -->
+        <div class="security-card reveal">
+          <div class="security-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="security-title">Dados armazenados com proteção</h3>
+          <p class="security-desc">Todas as buscas e interações comerciais ficam sob controle do usuário no armazenamento seguro do navegador e em trânsito com criptografia SSL/TLS de ponta a ponta.</p>
+        </div>
+
+        <!-- Bloco 3 -->
+        <div class="security-card reveal">
+          <div class="security-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </div>
+          <h3 class="security-title">Consentimento e exclusão imediata</h3>
+          <p class="security-desc">Os dados consultados são estritamente de pessoas jurídicas públicas no Google Places. Qualquer registro ou lead pode ser excluído definitivamente a qualquer momento com apenas 1 clique.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       12. PLANOS (FALE CONOSCO / SOB MEDIDA)
+       ========================================================================== -->
+  <section class="section" id="planos">
     <div class="container">
-      <div class="plans-box reveal">
-        <h2 class="plans-title">Acesso sob medida para o seu negócio</h2>
-        <p class="plans-desc">
-          O LedsNet é configurado de acordo com a sua região e volume de prospecção comercial. Sem cobranças recorrentes ocultas ou planos engessados.
-        </p>
+      <div class="plans-container reveal">
+        <div class="custom-plan-card">
+          <div class="custom-plan-badge">Acesso Exclusivo</div>
+          <h2 class="custom-plan-title">Fale conosco para um plano sob medida</h2>
+          <p class="custom-plan-desc">O LedsNet é configurado conforme o raio de atuação, os ramos de interesse e o tamanho da sua equipe comercial. Sem taxas ocultas nem mensalidades engessadas.</p>
 
-        <div class="plans-benefits">
-          <div class="benefit-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Sem tela de login nem cadastro público</span>
+          <div class="plan-features-list">
+            <div class="plan-feature-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Acesso privado com chave</span>
+            </div>
+            <div class="plan-feature-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Buscas no Google Places</span>
+            </div>
+            <div class="plan-feature-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Opportunity Score ativo</span>
+            </div>
+            <div class="plan-feature-item">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Suporte via WhatsApp</span>
+            </div>
           </div>
-          <div class="benefit-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Acesso privado com chave de segurança</span>
+
+          <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem;">
+            <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20um%20plano%20sob%20medida%20do%20LedsNet." target="_blank" class="btn btn-whatsapp" style="padding: 1rem 2.2rem; font-size: 1.05rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              </svg>
+              <span>Falar no WhatsApp</span>
+            </a>
+            <a href="/painel" class="btn btn-primary" style="padding: 1rem 2.2rem; font-size: 1.05rem;">
+              <span>Acessar Painel / Demonstração</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
           </div>
-          <div class="benefit-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Templates de WhatsApp prontos para uso</span>
+
+          <!-- Formulário Público de Captação com Consentimento LGPD -->
+          <div style="margin-top: 2.5rem; text-align: left; background: var(--bg-white); border: 1px solid var(--blue-border); border-radius: 18px; padding: 2rem; box-shadow: var(--shadow-sm);" id="form-captura">
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--bg-dark); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
+              <span>Solicitar Demonstração & Contato Comercial</span>
+            </h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+              Preencha os dados da sua empresa abaixo para receber uma demonstração personalizada da sua cidade.
+            </p>
+
+            <form id="publicLeadCaptureForm" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div style="grid-column: 1 / -1;">
+                <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Nome Completo / Responsável *</label>
+                <input type="text" id="capNome" required placeholder="Ex: Carlos Silva" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #CBD5E1; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none;">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">WhatsApp com DDD *</label>
+                <input type="tel" id="capTelefone" required placeholder="Ex: (71) 98888-0000" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #CBD5E1; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none;">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Ramo da sua empresa</label>
+                <input type="text" id="capRamo" placeholder="Ex: Climatização, Restaurante, Clínica" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #CBD5E1; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none;">
+              </div>
+
+              <div style="grid-column: 1 / -1;">
+                <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Cidade / Região de Atuação</label>
+                <input type="text" id="capRegiao" placeholder="Ex: Salvador e Região Metropolitana" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #CBD5E1; border-radius: 10px; font-size: 0.9rem; font-family: inherit; outline: none;">
+              </div>
+
+              <!-- Consentimento LGPD Obrigatório -->
+              <div style="grid-column: 1 / -1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.9rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+                <input type="checkbox" id="capLgpd" required style="margin-top: 0.25rem; width: 16px; height: 16px; cursor: pointer;">
+                <label for="capLgpd" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; cursor: pointer;">
+                  <strong>Consentimento LGPD:</strong> Concordo em fornecer meus dados de contato comercial para recebimento de demonstração e contato da equipe LedsNet, nos termos do Art. 7º, IX da Lei 13.709/2018. Posso solicitar exclusão a qualquer momento.
+                </label>
+              </div>
+
+              <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 1rem; margin-top: 0.5rem;">
+                <span id="capStatusMsg" style="font-size: 0.85rem; font-weight: 600;"></span>
+                <button type="submit" id="capSubmitBtn" class="btn btn-primary" style="padding: 0.85rem 1.8rem; font-size: 0.95rem;">
+                  <span>Enviar e Agendar Demonstração</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-
-        <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20saber%20como%20adquirir%20o%20LedsNet%20para%20minha%20empresa." target="_blank" class="btn btn-whatsapp" style="padding: 1rem 2.2rem; font-size: 1.05rem;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-          </svg>
-          <span>Fale Conosco no WhatsApp</span>
-        </a>
       </div>
     </div>
   </section>
 
   <!-- ==========================================================================
-       8. PERGUNTAS FREQUENTES (FAQ)
+       13. PERGUNTAS FREQUENTES (ACORDEÃO INTERATIVO)
        ========================================================================== -->
-  <section class="section" id="perguntas-frequentes">
+  <section class="section section-light" id="perguntas-frequentes">
     <div class="container">
       <div class="section-header reveal">
-        <div class="section-kicker">Dúvidas Frequentes</div>
-        <h2 class="section-title">Perguntas frequentes sobre o LedsNet</h2>
-        <p class="section-subtitle">Tudo sobre privacidade, funcionamento, tecnologia e termos de uso.</p>
+        <div class="section-badge">Tire suas dúvidas</div>
+        <h2 class="section-title">Perguntas frequentes</h2>
+        <p class="section-desc">Entenda todos os detalhes técnicos, operacionais e legais sobre a utilização do LedsNet.</p>
       </div>
 
-      <div class="faq-container">
+      <div class="faq-wrapper">
         <!-- FAQ 1 -->
-        <div class="faq-item reveal">
-          <button class="faq-question">
-            <span>1. Como o LedsNet está em conformidade com a LGPD?</span>
-            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Como funciona a busca de leads?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-answer">
-            O LedsNet trata exclusivamente dados de contato públicos e comerciais de pessoas jurídicas (estabelecimentos empresariais abertos ao público), com base legal no Legítimo Interesse (Art. 7º, IX da Lei 13.709/2018). Além disso, a plataforma disponibiliza botão de exclusão imediata e definitiva de qualquer lead a pedido do titular.
+          <div class="faq-body">
+            A busca consulta diretamente registros públicos de negócios locais no Google Maps com base na cidade, bairro e ramo definidos por você. O sistema extrai dados como nome, endereço, telefone, notas, volume de avaliações e a presença ou ausência de website oficial.
           </div>
         </div>
 
         <!-- FAQ 2 -->
-        <div class="faq-item reveal">
-          <button class="faq-question">
-            <span>2. Como funciona o uso dos dados da API do Google Places?</span>
-            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Preciso fazer cadastro ou login com senha?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-answer">
-            A plataforma consome dados públicos através das APIs oficiais do Google Maps / Places protegidas no servidor, sem raspagem invasiva de dados. As informações retornadas (nome, endereço, telefone, nota e avaliações) são públicas e respeitam os termos de serviço da plataforma.
+          <div class="faq-body">
+            Não. O LedsNet não possui tela de cadastro nem exige criação de senhas de múltiplos usuários. Seu acesso é liberado por um link privado protegido pela sua chave de segurança configurada na ativação da conta.
           </div>
         </div>
 
         <!-- FAQ 3 -->
-        <div class="faq-item reveal">
-          <button class="faq-question">
-            <span>3. Como funciona o contato pelo WhatsApp sem salvar o número?</span>
-            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Como os dados são protegidos e tratados na LGPD?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-answer">
-            O sistema utiliza o protocolo oficial Click-to-Chat do WhatsApp. Ao clicar no botão, uma nova aba do WhatsApp Web ou do aplicativo do celular é aberta com o número internacional formatado e a mensagem de abordagem personalizada já preenchida, sem exigir que o vendedor adicione o contato à agenda do telefone.
+          <div class="faq-body">
+            O LedsNet opera sob a base legal de Legítimo Interesse (Art. 7º, IX da Lei 13.709/2018), tratando exclusivamente dados comerciais e cadastrais públicos de pessoas jurídicas abertas ao público. A plataforma não realiza raspagem de dados pessoais sensíveis e garante o direito de exclusão imediata de qualquer lead.
           </div>
         </div>
 
         <!-- FAQ 4 -->
-        <div class="faq-item reveal">
-          <button class="faq-question">
-            <span>4. É necessário criar cadastro ou login com senha?</span>
-            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Posso importar minha própria lista de contatos?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-answer">
-            Não. O LedsNet não possui telas de login nem recuperação de senha. O acesso ao painel é feito diretamente por um link privado exclusivo protegido pela sua chave de segurança gerada na ativação da plataforma.
+          <div class="faq-body">
+            Sim. Além de descobrir novos estabelecimentos via Google Places, você pode adicionar leads manualmente ou via formulário integrado na página pública de captura (/captura), agrupando todos os seus contatos em um único funil comercial.
           </div>
         </div>
 
         <!-- FAQ 5 -->
-        <div class="faq-item reveal">
-          <button class="faq-question">
-            <span>5. De onde vêm os dados dos leads e como eles são atualizados?</span>
-            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>O contato pelo WhatsApp é automático ou manual?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div class="faq-answer">
-            Os dados são consultados diretamente a partir dos registros comerciais públicos do Google Maps no momento da busca, refletindo o status de funcionamento, notas e avaliações recentes. O Opportunity Score é calculado instantaneamente para apontar as oportunidades mais urgentes.
+          <div class="faq-body">
+            O disparo é semi-automático e assistido: ao clicar no botão "Falar no WhatsApp", o LedsNet formata o link oficial Click-to-Chat com a mensagem personalizada pronta. Você apenas confirma o envio no WhatsApp Web ou app, evitando bloqueios por disparos em massa não autorizados.
+          </div>
+        </div>
+
+        <!-- FAQ 6 -->
+        <div class="faq-accordion-item reveal">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Como cancelar o serviço ou excluir meus dados?</span>
+            <svg class="faq-icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-body">
+            Você tem total soberania sobre suas informações. No menu de configurações, é possível realizar backup completo dos leads, exportar em formato CSV e acionar o botão de exclusão de dados com reset da sessão a qualquer momento.
           </div>
         </div>
       </div>
@@ -1250,100 +2485,131 @@
   </section>
 
   <!-- ==========================================================================
-       9. CHAMADA FINAL & RODAPÉ
+       14. CHAMADA FINAL (CTA BANNER)
        ========================================================================== -->
-  <section class="section" style="padding-bottom: 90px;">
-    <div class="container">
+  <section class="section">
+    <div class="container cta-banner-wrapper">
       <div class="cta-banner reveal">
-        <h2 class="cta-title">Comece a prospectar clientes com inteligência</h2>
-        <p class="cta-desc">
-          Abandone as anotações espalhadas em planilhas e cadernos. Acesse o LedsNet e fale com empresas que precisam dos seus serviços hoje.
-        </p>
-        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-          <a href="/" class="btn btn-secondary" style="background: var(--branco); color: var(--azul-principal); padding: 0.9rem 1.8rem; font-size: 1rem;">
-            Ver demonstração
+        <h2 class="cta-banner-title">Pronto para encontrar seus próximos clientes?</h2>
+        <p class="cta-banner-desc">Comece a prospectar de forma profissional hoje mesmo com o LedsNet. Veja a demonstração ao vivo ou tire dúvidas diretamente com nossa equipe no WhatsApp.</p>
+        <div class="cta-buttons">
+          <a href="/" class="btn btn-secondary" style="padding: 1.1rem 2.2rem; font-size: 1.05rem;">
+            <span>Ver demonstração</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
           </a>
-          <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Quero%20ativar%20o%20LedsNet%20para%20minha%20empresa." target="_blank" class="btn btn-whatsapp" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
-            Falar no WhatsApp
+          <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Quero%20ativar%20o%20LedsNet%20para%20minha%20empresa." target="_blank" class="btn btn-whatsapp" style="padding: 1.1rem 2.2rem; font-size: 1.05rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+            </svg>
+            <span>Falar no WhatsApp</span>
           </a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Rodapé -->
-  <footer>
+  <!-- ==========================================================================
+       15. RODAPÉ
+       ========================================================================== -->
+  <footer class="site-footer">
     <div class="container">
-      <div class="footer-content">
-        <div class="logo" style="color: var(--branco);">
-          <span class="logo-dot"></span>
+      <div class="footer-top">
+        <a href="#" class="brand-logo footer-brand">
+          <div class="brand-symbol">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
           <span>LedsNet</span>
-        </div>
+        </a>
 
-        <div class="footer-links">
+        <div class="footer-nav">
           <a href="#[placeholder-politica]">[Política de Privacidade]</a>
           <a href="#[placeholder-termos]">[Termos de Uso]</a>
-          <a href="https://wa.me/[número com DDI]" target="_blank">[Suporte via WhatsApp]</a>
+          <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Preciso%20de%20contato%20sobre%20o%20LedsNet." target="_blank">[Contato via WhatsApp]</a>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <p>© 2026 LedsNet. Todos os direitos reservados. Plataforma de inteligência comercial em conformidade com a LGPD.</p>
+        <p>© <span id="currentYear"></span> LedsNet. Todos os direitos reservados. Plataforma de inteligência comercial em conformidade com a LGPD.</p>
+        <p style="color: #64748B;">Desenvolvido para máxima conversão B2B.</p>
       </div>
     </div>
   </footer>
 
+  <!-- Barra de CTA Fixa no Rodapé do Celular -->
+  <aside class="mobile-fixed-cta-bar" aria-label="Ações rápidas">
+    <div class="cta-buttons-inline">
+      <a href="/" class="btn btn-primary">
+        <span>Demonstração</span>
+      </a>
+      <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20falar%20no%20WhatsApp." target="_blank" class="btn btn-whatsapp">
+        <span>WhatsApp</span>
+      </a>
+    </div>
+  </aside>
+
   <!-- ==========================================================================
-       SCRIPTS JAVASCRIPT EM UM ÚNICO ARQUIVO
+       19. JAVASCRIPT INLINE & EFEITOS
        ========================================================================== -->
   <script>
-    // 1. Menu Mobile Hamburger
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    const navMenu = document.getElementById('navMenu');
+    // 1. Atualizar ano no rodapé automaticamente
+    const yearSpan = document.getElementById('currentYear');
+    if (yearSpan) {
+      yearSpan.textContent = new Date().getFullYear();
+    }
 
-    if (mobileMenuBtn && navMenu) {
-      mobileMenuBtn.addEventListener('click', () => {
-        navMenu.classList.toggle('open');
+    // 2. Menu Mobile Fullscreen
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+    if (menuToggleBtn && mobileMenu) {
+      menuToggleBtn.addEventListener('click', () => {
+        const isOpen = mobileMenu.classList.toggle('open');
+        menuToggleBtn.setAttribute('aria-expanded', isOpen);
+        mobileMenu.setAttribute('aria-hidden', !isOpen);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
       });
 
-      // Fechar menu ao clicar em um link
-      navMenu.querySelectorAll('.nav-link').forEach(link => {
+      if (mobileMenuClose) {
+        mobileMenuClose.addEventListener('click', () => {
+          mobileMenu.classList.remove('open');
+          menuToggleBtn.setAttribute('aria-expanded', 'false');
+          mobileMenu.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
+        });
+      }
+
+      // Fechar ao clicar em links
+      mobileMenu.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
-          navMenu.classList.remove('open');
+          mobileMenu.classList.remove('open');
+          menuToggleBtn.setAttribute('aria-expanded', 'false');
+          mobileMenu.setAttribute('aria-hidden', 'true');
+          document.body.style.overflow = '';
         });
       });
     }
 
-    // 2. Sombra no cabeçalho ao rolar
-    const header = document.getElementById('header');
+    // 3. Sombra dinâmica no cabeçalho ao rolar
+    const siteHeader = document.getElementById('siteHeader');
     window.addEventListener('scroll', () => {
       if (window.scrollY > 20) {
-        header.classList.add('scrolled');
+        siteHeader.classList.add('scrolled');
       } else {
-        header.classList.remove('scrolled');
+        siteHeader.classList.remove('scrolled');
       }
-    });
+    }, { passive: true });
 
-    // 3. Accordion de Perguntas Frequentes (FAQ)
-    const faqItems = document.querySelectorAll('.faq-item');
-    faqItems.forEach(item => {
-      const questionBtn = item.querySelector('.faq-question');
-      questionBtn.addEventListener('click', () => {
-        const isActive = item.classList.contains('active');
-        
-        // Fecha todos os outros itens
-        faqItems.forEach(otherItem => otherItem.classList.remove('active'));
-
-        // Alterna o item atual
-        if (!isActive) {
-          item.classList.add('active');
-        }
-      });
-    });
-
-    // 4. Animações leves ao rolar a página (Fade & Slide suave com Intersection Observer)
+    // 4. Animação de Revelação suave (IntersectionObserver)
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const revealElements = document.querySelectorAll('.reveal');
-    if ('IntersectionObserver' in window) {
+
+    if (!prefersReducedMotion && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries, obs) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -1358,8 +2624,121 @@
 
       revealElements.forEach(el => observer.observe(el));
     } else {
-      // Fallback para navegadores antigos sem IntersectionObserver
       revealElements.forEach(el => el.classList.add('active'));
+    }
+
+    // 5. Acordeão de Perguntas Frequentes (FAQ)
+    const faqItems = document.querySelectorAll('.faq-accordion-item');
+    faqItems.forEach(item => {
+      const trigger = item.querySelector('.faq-trigger');
+      if (trigger) {
+        trigger.addEventListener('click', () => {
+          const isCurrentlyOpen = item.classList.contains('open');
+          
+          // Fecha os outros itens
+          faqItems.forEach(otherItem => {
+            otherItem.classList.remove('open');
+            const otherTrigger = otherItem.querySelector('.faq-trigger');
+            if (otherTrigger) otherTrigger.setAttribute('aria-expanded', 'false');
+          });
+
+          // Abre o selecionado se estava fechado
+          if (!isCurrentlyOpen) {
+            item.classList.add('open');
+            trigger.setAttribute('aria-expanded', 'true');
+          }
+        });
+      }
+    });
+
+    // 6. Efeito 3D Tilt suave nos Cards de Recursos
+    const tiltCards = document.querySelectorAll('[data-tilt]');
+    if (!prefersReducedMotion && window.innerWidth > 992) {
+      tiltCards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          
+          const rotateX = ((y - centerY) / centerY) * -6;
+          const rotateY = ((x - centerX) / centerX) * 6;
+          
+          card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+        });
+
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0)';
+        });
+      });
+    }
+
+    // 7. Envio do Formulário de Captação Pública (PASSO 7)
+    const publicCaptureForm = document.getElementById('publicLeadCaptureForm');
+    const capStatusMsg = document.getElementById('capStatusMsg');
+    const capSubmitBtn = document.getElementById('capSubmitBtn');
+
+    if (publicCaptureForm) {
+      publicCaptureForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nome = document.getElementById('capNome').value.trim();
+        const telefone = document.getElementById('capTelefone').value.trim();
+        const ramo = document.getElementById('capRamo').value.trim();
+        const regiao = document.getElementById('capRegiao').value.trim();
+        const consentimentoLgpd = document.getElementById('capLgpd').checked;
+
+        if (!nome || !telefone || !consentimentoLgpd) {
+          if (capStatusMsg) {
+            capStatusMsg.style.color = '#EF4444';
+            capStatusMsg.textContent = 'Por favor, preencha os campos obrigatórios e marque o consentimento LGPD.';
+          }
+          return;
+        }
+
+        if (capSubmitBtn) {
+          capSubmitBtn.disabled = true;
+          capSubmitBtn.style.opacity = '0.7';
+          capSubmitBtn.textContent = 'Gravando no Firestore...';
+        }
+
+        try {
+          const resp = await fetch('/api/leads/public/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nome,
+              telefone,
+              ramo: ramo || 'Interesse Comercial',
+              regiao: regiao || 'Brasil',
+              consentimentoLgpd: true
+            })
+          });
+
+          const data = await resp.json();
+          if (resp.ok && data.success) {
+            if (capStatusMsg) {
+              capStatusMsg.style.color = '#10B981';
+              capStatusMsg.textContent = '✓ Solicitação recebida com sucesso! Gravado no Firestore como lead de formulário.';
+            }
+            publicCaptureForm.reset();
+          } else {
+            throw new Error(data.error || 'Falha ao registrar solicitação.');
+          }
+        } catch (err) {
+          if (capStatusMsg) {
+            capStatusMsg.style.color = '#EF4444';
+            capStatusMsg.textContent = err.message || 'Erro ao enviar. Tente novamente ou use o botão do WhatsApp.';
+          }
+        } finally {
+          if (capSubmitBtn) {
+            capSubmitBtn.disabled = false;
+            capSubmitBtn.style.opacity = '1';
+            capSubmitBtn.innerHTML = '<span>Enviar e Agendar Demonstração</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+          }
+        }
+      });
     }
   </script>
 </body>
