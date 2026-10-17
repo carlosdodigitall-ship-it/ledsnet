@@ -21,7 +21,7 @@ import { Sidebar } from './components/Sidebar';
 
 function DashboardApp() {
   const { user } = useAuth();
-  const accessKey = user?.email || '';
+  const accessKey = '';
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'finder' | 'kanban' | 'tasks' | 'prd' | 'capture'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopPinned, setIsDesktopPinned] = useState(true);
