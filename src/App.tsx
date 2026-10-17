@@ -21,7 +21,7 @@ import { Sidebar } from './components/Sidebar';
 
 function DashboardApp() {
   const { user } = useAuth();
-  const [accessKey, setAccessKey] = useState<string>('');
+  const accessKey = user?.email || '';
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'finder' | 'kanban' | 'tasks' | 'prd' | 'capture'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopPinned, setIsDesktopPinned] = useState(true);
@@ -89,10 +89,6 @@ function DashboardApp() {
   // A sessão real é gerenciada pelo Firebase Authentication.
   const handleLogout = () => {
     void signOut(auth).finally(() => window.location.assign('/entrar'));
-  };
-
-  const handleUpdateKey = (_newKey: string) => {
-    alert('Chaves de integração não podem ser armazenadas no navegador. Configure-as como segredos no servidor.');
   };
 
   // Ações de Leads
@@ -351,8 +347,6 @@ function DashboardApp() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        accessKey={accessKey}
-        onUpdateKey={handleUpdateKey}
         onLogout={handleLogout}
         onExportCSV={() => exportLeadsToCSV(leads)}
         leads={leads}
