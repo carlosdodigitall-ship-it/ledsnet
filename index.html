@@ -3,6 +3,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LedsNet — Encontre clientes antes que a concorrência encontre</title>
   <meta name="description" content="Plataforma de inteligência de prospecção comercial local. Descubra empresas sem site ou com baixa nota no Google Places e converse no WhatsApp.">
@@ -953,7 +954,8 @@
       .ledsnet-marquee__track { animation: none; width: 100%; flex-wrap: wrap; justify-content: center; gap: 10px 20px; }
       .ledsnet-marquee__group { display: contents; padding: 0; }
       .ledsnet-marquee__item { white-space: normal; gap: 12px; }
-      .ledsnet-marquee__item:nth-child(n+3) { display: none; }
+      .ledsnet-marquee__group[aria-hidden="true"] { display: none; }
+      .ledsnet-marquee__group:not([aria-hidden="true"]) { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 20px; }
       *, *::before, *::after { scroll-behavior: auto !important; }
     }
 
