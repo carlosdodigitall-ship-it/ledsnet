@@ -1,21 +1,1367 @@
+<!DOCTYPE html>
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LedsNet - Prospecção e Captação de Leads Locais</title>
-    <meta name="description" content="Plataforma inteligente de busca de leads no Google Places, qualificação por Opportunity Score e gestão comercial via funil WhatsApp." />
-    <meta property="og:title" content="LedsNet - Prospecção e Captação de Leads Locais" />
-    <meta property="og:description" content="Plataforma inteligente de busca de leads no Google Places, qualificação por Opportunity Score e gestão comercial via funil WhatsApp." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LedsNet — Encontre clientes antes que a concorrência encontre</title>
+  <meta name="description" content="Plataforma de inteligência de prospecção comercial local. Descubra empresas sem site ou com baixa nota no Google Places e converse no WhatsApp.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
+  <style>
+    /* ==========================================================================
+       RESET & CORES DO DESIGN SYSTEM LEDSNET
+       ========================================================================== */
+    :root {
+      --azul-principal: #1D4ED8;
+      --azul-hover: #1E40AF;
+      --azul-escuro: #0B1F44;
+      --azul-claro: #EEF4FF;
+      --azul-destaque: #60A5FA;
+      --branco: #FFFFFF;
+      --cinza-texto: #4B5563;
+      --cinza-suave: #9CA3AF;
+      --borda-suave: #E2E8F0;
+      --verde-zap: #10B981;
+      --sombra-card: 0 10px 25px -5px rgba(29, 78, 216, 0.07), 0 8px 10px -6px rgba(11, 31, 68, 0.04);
+      --sombra-hover: 0 20px 30px -10px rgba(29, 78, 216, 0.12), 0 10px 15px -5px rgba(11, 31, 68, 0.06);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--branco);
+      color: var(--azul-escuro);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* ==========================================================================
+       CABEÇALHO FIXO
+       ========================================================================== */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--borda-suave);
+      z-index: 1000;
+      transition: box-shadow 0.3s ease;
+    }
+
+    header.scrolled {
+      box-shadow: 0 4px 20px rgba(11, 31, 68, 0.06);
+    }
+
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+      color: var(--azul-escuro);
+    }
+
+    .logo-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--azul-principal);
+      box-shadow: 0 0 12px var(--azul-destaque);
+    }
+
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .nav-link {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--cinza-texto);
+      transition: color 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--azul-principal);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.4rem;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background-color: var(--azul-principal);
+      color: var(--branco);
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--azul-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.35);
+    }
+
+    .btn-secondary {
+      background-color: var(--azul-claro);
+      color: var(--azul-principal);
+    }
+
+    .btn-secondary:hover {
+      background-color: #E0ECFF;
+      color: var(--azul-hover);
+    }
+
+    .btn-whatsapp {
+      background-color: #059669;
+      color: var(--branco);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-whatsapp:hover {
+      background-color: #047857;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      color: var(--azul-escuro);
+    }
+
+    /* ==========================================================================
+       HERO SECTION COM MOCKUP EM CSS PURO
+       ========================================================================== */
+    .hero {
+      padding: 140px 0 80px;
+      background: radial-gradient(circle at 50% 10%, #F5F9FF 0%, #FFFFFF 70%);
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      background-color: var(--azul-claro);
+      color: var(--azul-principal);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--azul-escuro);
+      max-width: 860px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--cinza-texto);
+      max-width: 700px;
+      margin: 0 auto 2.5rem;
+      font-weight: 500;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 4rem;
+    }
+
+    /* Mockup de Dashboard Desenho em CSS Puro */
+    .mockup-wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--branco);
+      border-radius: 20px;
+      padding: 1rem;
+      border: 1px solid var(--borda-suave);
+      box-shadow: 0 25px 50px -12px rgba(11, 31, 68, 0.15), 0 0 0 1px rgba(29, 78, 216, 0.05);
+    }
+
+    .mockup-window {
+      background: #0B132B;
+      border-radius: 14px;
+      overflow: hidden;
+      color: #E2E8F0;
+      text-align: left;
+      font-size: 0.8rem;
+    }
+
+    .mockup-header {
+      background: #070D1E;
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1E293B;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background-color: #EF4444; }
+    .dot-yellow { background-color: #F59E0B; }
+    .dot-green { background-color: #10B981; }
+
+    .mockup-search-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #152238;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      color: #94A3B8;
+      font-size: 0.75rem;
+      width: 50%;
+    }
+
+    .mockup-content {
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .mockup-lead-card {
+      background: #111C35;
+      border: 1px solid #1E293B;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .lead-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #60A5FA;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .lead-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 0.4rem;
+    }
+
+    .lead-details {
+      font-size: 0.72rem;
+      color: #94A3B8;
+      margin-bottom: 0.8rem;
+    }
+
+    .lead-score-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .score-high {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .score-warn {
+      background: rgba(245, 158, 11, 0.15);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .mockup-whatsapp-btn {
+      margin-top: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: #059669;
+      color: #FFFFFF;
+      padding: 0.4rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       SEÇÃO: COMO FUNCIONA
+       ========================================================================== */
+    .section {
+      padding: 90px 0;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 4rem;
+    }
+
+    .section-kicker {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--azul-principal);
+      margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--azul-escuro);
+      margin-bottom: 1rem;
+    }
+
+    .section-subtitle {
+      font-size: 1.05rem;
+      color: var(--cinza-texto);
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+
+    .step-card {
+      background: var(--branco);
+      border: 1px solid var(--borda-suave);
+      border-radius: 18px;
+      padding: 2.2rem;
+      box-shadow: var(--sombra-card);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .step-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--sombra-hover);
+      border-color: var(--azul-destaque);
+    }
+
+    .step-number {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--azul-claro);
+      color: var(--azul-principal);
+      font-weight: 800;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .step-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      color: var(--azul-escuro);
+    }
+
+    .step-desc {
+      font-size: 0.95rem;
+      color: var(--cinza-texto);
+      line-height: 1.6;
+    }
+
+    /* ==========================================================================
+       SEÇÃO: RECURSOS (6 CARDS)
+       ========================================================================== */
+    .bg-light {
+      background-color: #F8FAFC;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+    }
+
+    .feature-card {
+      background: var(--branco);
+      border: 1px solid var(--borda-suave);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--sombra-card);
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--sombra-hover);
+      border-color: var(--azul-destaque);
+    }
+
+    .feature-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--azul-claro);
+      color: var(--azul-principal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .feature-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: var(--azul-escuro);
+    }
+
+    .feature-desc {
+      font-size: 0.92rem;
+      color: var(--cinza-texto);
+      line-height: 1.55;
+    }
+
+    /* ==========================================================================
+       SEÇÃO: NÚMEROS DE DESTAQUE (PLACEHOLDERS)
+       ========================================================================== */
+    .stats-section {
+      background: var(--azul-escuro);
+      color: var(--branco);
+      padding: 70px 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--azul-destaque);
+      margin-bottom: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-label {
+      font-size: 0.95rem;
+      color: #CBD5E1;
+      font-weight: 500;
+    }
+
+    /* ==========================================================================
+       SEÇÃO: DEPOIMENTOS (PLACEHOLDERS)
+       ========================================================================== */
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+    }
+
+    .testimonial-card {
+      background: var(--branco);
+      border: 1px solid var(--borda-suave);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--sombra-card);
+      display: flex;
+      flex-col: column;
+      justify-content: space-between;
+    }
+
+    .testimonial-quote {
+      font-size: 0.95rem;
+      color: var(--cinza-texto);
+      font-style: italic;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .testimonial-author {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .author-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--azul-claro);
+      color: var(--azul-principal);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .author-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--azul-escuro);
+    }
+
+    .author-role {
+      font-size: 0.8rem;
+      color: var(--cinza-suave);
+    }
+
+    /* ==========================================================================
+       SEÇÃO: PLANOS (FALE CONOSCO)
+       ========================================================================== */
+    .plans-box {
+      max-width: 800px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #F8FAFC 0%, var(--azul-claro) 100%);
+      border: 1px solid var(--borda-suave);
+      border-radius: 24px;
+      padding: 3.5rem 2.5rem;
+      text-align: center;
+      box-shadow: var(--sombra-card);
+    }
+
+    .plans-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--azul-escuro);
+      margin-bottom: 1rem;
+    }
+
+    .plans-desc {
+      font-size: 1.05rem;
+      color: var(--cinza-texto);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .plans-benefits {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+      text-align: left;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--azul-escuro);
+    }
+
+    /* ==========================================================================
+       SEÇÃO: PERGUNTAS FREQUENTES (ACCORDION)
+       ========================================================================== */
+    .faq-container {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      border: 1px solid var(--borda-suave);
+      border-radius: 14px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      background: var(--branco);
+      transition: all 0.2s ease;
+    }
+
+    .faq-question {
+      width: 100%;
+      text-align: left;
+      padding: 1.35rem 1.5rem;
+      background: none;
+      border: none;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--azul-escuro);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .faq-icon {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.3s ease;
+      stroke: var(--azul-principal);
+      flex-shrink: 0;
+    }
+
+    .faq-item.active .faq-icon {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.3s ease;
+      color: var(--cinza-texto);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      padding: 0 1.5rem;
+    }
+
+    .faq-item.active .faq-answer {
+      max-height: 300px;
+      padding-bottom: 1.35rem;
+    }
+
+    /* ==========================================================================
+       CHAMADA FINAL & RODAPÉ
+       ========================================================================== */
+    .cta-banner {
+      background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul-principal) 100%);
+      color: var(--branco);
+      border-radius: 24px;
+      padding: 4rem 2rem;
+      text-align: center;
+      margin: 0 auto;
+      max-width: 1100px;
+    }
+
+    .cta-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .cta-desc {
+      font-size: 1.05rem;
+      color: #E2E8F0;
+      max-width: 620px;
+      margin: 0 auto 2.5rem;
+    }
+
+    footer {
+      background: #070D1E;
+      color: #94A3B8;
+      padding: 60px 0 30px;
+      border-top: 1px solid #1E293B;
+      font-size: 0.9rem;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid #1E293B;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .footer-links a:hover {
+      color: var(--branco);
+    }
+
+    .footer-bottom {
+      padding-top: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    /* ==========================================================================
+       ANIMAÇÕES SUAVES DE ENTRADA AO ROLAR
+       ========================================================================== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ==========================================================================
+       RESPONSIVIDADE (MOBILE & TABLETS)
+       ========================================================================== */
+    @media (max-width: 992px) {
+      .steps-grid,
+      .features-grid,
+      .testimonials-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .mockup-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-menu {
+        position: fixed;
+        top: 72px;
+        left: -100%;
+        width: 100%;
+        background: var(--branco);
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        transition: left 0.3s ease;
+      }
+
+      .nav-menu.open {
+        left: 0;
+      }
+
+      .mobile-menu-btn {
+        display: block;
+      }
+
+      .steps-grid,
+      .features-grid,
+      .testimonials-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 110px;
+      }
+
+      .hero-cta {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .hero-cta .btn {
+        width: 100%;
+      }
+
+      .plans-box {
+        padding: 2.5rem 1.5rem;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       1. CABEÇALHO FIXO
+       ========================================================================== -->
+  <header id="header">
+    <div class="container nav-container">
+      <a href="#" class="logo">
+        <span class="logo-dot"></span>
+        <span>LedsNet</span>
+      </a>
+
+      <nav class="nav-menu" id="navMenu">
+        <a href="#recursos" class="nav-link">Recursos</a>
+        <a href="#como-funciona" class="nav-link">Como funciona</a>
+        <a href="#perguntas-frequentes" class="nav-link">Perguntas frequentes</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="/" class="btn btn-primary">Ver demonstração</a>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       2. HERO SECTION COM MOCKUP EM CSS PURO
+       ========================================================================== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge reveal">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>Captação Inteligente de Oportunidades Locais</span>
+      </div>
+
+      <h1 class="hero-title reveal">
+        Encontre clientes antes que a concorrência encontre.
+      </h1>
+
+      <p class="hero-subtitle reveal">
+        Descubra empresas na sua cidade que não têm site, estão com poucas avaliações ou reputação desassistida. Priorize contatos quentes e fale no WhatsApp com abordagem personalizada em poucos cliques.
+      </p>
+
+      <div class="hero-cta reveal">
+        <a href="/" class="btn btn-primary" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
+          <span>Ver demonstração ao vivo</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+        <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20conhecer%20o%20LedsNet%20para%20o%20meu%20neg%C3%B3cio." target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          <span>Falar no WhatsApp</span>
+        </a>
+      </div>
+
+      <!-- Mockup do Dashboard desenhado exclusivamente em CSS -->
+      <div class="mockup-wrapper reveal">
+        <div class="mockup-window">
+          <div class="mockup-header">
+            <div class="window-dots">
+              <span class="window-dot dot-red"></span>
+              <span class="window-dot dot-yellow"></span>
+              <span class="window-dot dot-green"></span>
+            </div>
+            <div class="mockup-search-bar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Salvador, BA · Ramo: Climatização & Restaurantes · Raio: 15 km</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #60A5FA; font-weight: 700;">● Painel Ativo</div>
+          </div>
+
+          <div class="mockup-content">
+            <!-- Card 1 -->
+            <div class="mockup-lead-card">
+              <div class="lead-tag">Restaurantes</div>
+              <div class="lead-name">Churrascaria Boi & Brasa</div>
+              <div class="lead-details">Av. Otávio Mangabeira, Pituba<br>★ 3.6 (12 avaliações) · Sem site cadastrado</div>
+              <div class="lead-score-pill score-high">Opportunity Score: 92/100</div>
+              <div class="mockup-whatsapp-btn">
+                <span>Falar no WhatsApp com Template</span>
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="mockup-lead-card">
+              <div class="lead-tag">Condomínios</div>
+              <div class="lead-name">Residencial Torres do Parque</div>
+              <div class="lead-details">Rua Afonso Celso, Barra<br>★ 3.8 (19 avaliações) · Sem site registrado</div>
+              <div class="lead-score-pill score-high">Opportunity Score: 88/100</div>
+              <div class="mockup-whatsapp-btn">
+                <span>Falar no WhatsApp com Template</span>
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="mockup-lead-card">
+              <div class="lead-tag">Clínicas Médicas</div>
+              <div class="lead-name">Centro Integrado de Saúde</div>
+              <div class="lead-details">Av. Tancredo Neves, Caminho das Árvores<br>★ 4.1 (28 avaliações) · Site desatualizado</div>
+              <div class="lead-score-pill score-warn">Opportunity Score: 76/100</div>
+              <div class="mockup-whatsapp-btn">
+                <span>Falar no WhatsApp com Template</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       3. COMO FUNCIONA (3 PASSOS NUMERADOS)
+       ========================================================================== -->
+  <section class="section" id="como-funciona">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-kicker">Fluxo Simples</div>
+        <h2 class="section-title">Como funciona o LedsNet</h2>
+        <p class="section-subtitle">Sem processos complexos ou cadastros demorados. Três passos para iniciar sua prospecção hoje.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card reveal">
+          <div class="step-number">01</div>
+          <h3 class="step-title">Escolha a região e o ramo</h3>
+          <p class="step-desc">
+            Digite a cidade ou bairro desejado e o nicho de mercado (ex.: condomínios, restaurantes, consultórios ou lojas). Defina o raio de busca em quilômetros.
+          </p>
+        </div>
+
+        <div class="step-card reveal">
+          <div class="step-number">02</div>
+          <h3 class="step-title">Veja os leads priorizados por score</h3>
+          <p class="step-desc">
+            O algoritmo analisa automaticamente a presença online de cada negócio no Google Places e calcula o Opportunity Score com base em notas, volume de avaliações e ausência de site.
+          </p>
+        </div>
+
+        <div class="step-card reveal">
+          <div class="step-number">03</div>
+          <h3 class="step-title">Acompanhe o funil e fale pelo WhatsApp</h3>
+          <p class="step-desc">
+            Adicione os melhores contatos ao funil comercial, selecione modelos de abordagem prontos e inicie a conversa no WhatsApp diretamente, sem precisar salvar o número na agenda.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       4. RECURSOS (6 CARDS)
+       ========================================================================== -->
+  <section class="section bg-light" id="recursos">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-kicker">Recursos Completos</div>
+        <h2 class="section-title">Tudo o que você precisa para prospectar clientes locais</h2>
+        <p class="section-subtitle">Projetado com foco em agilidade comercial e facilidade de uso diário.</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Card 1 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          </div>
+          <h3 class="feature-title">Busca por região</h3>
+          <p class="feature-desc">Mapeie bairros específicos ou regiões metropolitanas inteiras com raio configurável de 3km a 50km em poucos segundos.</p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+          <h3 class="feature-title">Score de oportunidade</h3>
+          <p class="feature-desc">Algoritmo transparente que prioriza empresas sem site próprio, com notas baixas ou poucas avaliações, prontas para receber propostas.</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </div>
+          <h3 class="feature-title">Funil de vendas</h3>
+          <p class="feature-desc">Organize seus contatos em 6 estágios claros: Novo, Contatado, Respondeu, Qualificado, Convertido e Perdido, com valor financeiro estimado.</p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          </div>
+          <h3 class="feature-title">Contato direto pelo WhatsApp</h3>
+          <p class="feature-desc">Abra conversas instantâneas via Click-to-Chat com modelos de mensagens personalizados que substituem o nome e o ramo da empresa automaticamente.</p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </div>
+          <h3 class="feature-title">Dashboard com métricas</h3>
+          <p class="feature-desc">Acompanhe KPIs em tempo real: total de leads, taxa de resposta, taxa de conversão final e lista de follow-ups agendados para o dia.</p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </div>
+          <h3 class="feature-title">Exportação em CSV</h3>
+          <p class="feature-desc">Exporte todos os contatos, telefones, histórico de interações e anotações para planilhas Excel formatadas em UTF-8 com 1 clique.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       5. NÚMEROS DE DESTAQUE (PLACEHOLDERS)
+       ========================================================================== -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item reveal">
+          <div class="stat-number">[placeholder]</div>
+          <div class="stat-label">[placeholder métrica 1]</div>
+        </div>
+        <div class="stat-item reveal">
+          <div class="stat-number">[placeholder]</div>
+          <div class="stat-label">[placeholder métrica 2]</div>
+        </div>
+        <div class="stat-item reveal">
+          <div class="stat-number">[placeholder]</div>
+          <div class="stat-label">[placeholder métrica 3]</div>
+        </div>
+        <div class="stat-item reveal">
+          <div class="stat-number">[placeholder]</div>
+          <div class="stat-label">[placeholder métrica 4]</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       6. DEPOIMENTOS (PLACEHOLDERS)
+       ========================================================================== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-kicker">Experiências Reais</div>
+        <h2 class="section-title">O que dizem os usuários do LedsNet</h2>
+        <p class="section-subtitle">Resultados práticos de empresas e prestadores de serviços que transformaram sua rotina de captação.</p>
+      </div>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card reveal">
+          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre facilidade de prospecção]"</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">[P1]</div>
+            <div>
+              <div class="author-name">[nome]</div>
+              <div class="author-role">[cargo / empresa]</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal">
+          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre aumento de contatos no WhatsApp]"</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">[P2]</div>
+            <div>
+              <div class="author-name">[nome]</div>
+              <div class="author-role">[cargo / empresa]</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal">
+          <p class="testimonial-quote">"[depoimento placeholder - espaço reservado para feedback do cliente sobre o cálculo do Opportunity Score]"</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">[P3]</div>
+            <div>
+              <div class="author-name">[nome]</div>
+              <div class="author-role">[cargo / empresa]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       7. PLANOS (FALE CONOSCO / SEM PREÇOS FIXOS)
+       ========================================================================== -->
+  <section class="section bg-light" id="planos">
+    <div class="container">
+      <div class="plans-box reveal">
+        <h2 class="plans-title">Acesso sob medida para o seu negócio</h2>
+        <p class="plans-desc">
+          O LedsNet é configurado de acordo com a sua região e volume de prospecção comercial. Sem cobranças recorrentes ocultas ou planos engessados.
+        </p>
+
+        <div class="plans-benefits">
+          <div class="benefit-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Sem tela de login nem cadastro público</span>
+          </div>
+          <div class="benefit-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Acesso privado com chave de segurança</span>
+          </div>
+          <div class="benefit-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Templates de WhatsApp prontos para uso</span>
+          </div>
+        </div>
+
+        <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Gostaria%20de%20saber%20como%20adquirir%20o%20LedsNet%20para%20minha%20empresa." target="_blank" class="btn btn-whatsapp" style="padding: 1rem 2.2rem; font-size: 1.05rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          <span>Fale Conosco no WhatsApp</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       8. PERGUNTAS FREQUENTES (FAQ)
+       ========================================================================== -->
+  <section class="section" id="perguntas-frequentes">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-kicker">Dúvidas Frequentes</div>
+        <h2 class="section-title">Perguntas frequentes sobre o LedsNet</h2>
+        <p class="section-subtitle">Tudo sobre privacidade, funcionamento, tecnologia e termos de uso.</p>
+      </div>
+
+      <div class="faq-container">
+        <!-- FAQ 1 -->
+        <div class="faq-item reveal">
+          <button class="faq-question">
+            <span>1. Como o LedsNet está em conformidade com a LGPD?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            O LedsNet trata exclusivamente dados de contato públicos e comerciais de pessoas jurídicas (estabelecimentos empresariais abertos ao público), com base legal no Legítimo Interesse (Art. 7º, IX da Lei 13.709/2018). Além disso, a plataforma disponibiliza botão de exclusão imediata e definitiva de qualquer lead a pedido do titular.
+          </div>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="faq-item reveal">
+          <button class="faq-question">
+            <span>2. Como funciona o uso dos dados da API do Google Places?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            A plataforma consome dados públicos através das APIs oficiais do Google Maps / Places protegidas no servidor, sem raspagem invasiva de dados. As informações retornadas (nome, endereço, telefone, nota e avaliações) são públicas e respeitam os termos de serviço da plataforma.
+          </div>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="faq-item reveal">
+          <button class="faq-question">
+            <span>3. Como funciona o contato pelo WhatsApp sem salvar o número?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            O sistema utiliza o protocolo oficial Click-to-Chat do WhatsApp. Ao clicar no botão, uma nova aba do WhatsApp Web ou do aplicativo do celular é aberta com o número internacional formatado e a mensagem de abordagem personalizada já preenchida, sem exigir que o vendedor adicione o contato à agenda do telefone.
+          </div>
+        </div>
+
+        <!-- FAQ 4 -->
+        <div class="faq-item reveal">
+          <button class="faq-question">
+            <span>4. É necessário criar cadastro ou login com senha?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            Não. O LedsNet não possui telas de login nem recuperação de senha. O acesso ao painel é feito diretamente por um link privado exclusivo protegido pela sua chave de segurança gerada na ativação da plataforma.
+          </div>
+        </div>
+
+        <!-- FAQ 5 -->
+        <div class="faq-item reveal">
+          <button class="faq-question">
+            <span>5. De onde vêm os dados dos leads e como eles são atualizados?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="faq-answer">
+            Os dados são consultados diretamente a partir dos registros comerciais públicos do Google Maps no momento da busca, refletindo o status de funcionamento, notas e avaliações recentes. O Opportunity Score é calculado instantaneamente para apontar as oportunidades mais urgentes.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       9. CHAMADA FINAL & RODAPÉ
+       ========================================================================== -->
+  <section class="section" style="padding-bottom: 90px;">
+    <div class="container">
+      <div class="cta-banner reveal">
+        <h2 class="cta-title">Comece a prospectar clientes com inteligência</h2>
+        <p class="cta-desc">
+          Abandone as anotações espalhadas em planilhas e cadernos. Acesse o LedsNet e fale com empresas que precisam dos seus serviços hoje.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <a href="/" class="btn btn-secondary" style="background: var(--branco); color: var(--azul-principal); padding: 0.9rem 1.8rem; font-size: 1rem;">
+            Ver demonstração
+          </a>
+          <a href="https://wa.me/[número com DDI]?text=Ol%C3%A1!%20Quero%20ativar%20o%20LedsNet%20para%20minha%20empresa." target="_blank" class="btn btn-whatsapp" style="padding: 0.9rem 1.8rem; font-size: 1rem;">
+            Falar no WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="logo" style="color: var(--branco);">
+          <span class="logo-dot"></span>
+          <span>LedsNet</span>
+        </div>
+
+        <div class="footer-links">
+          <a href="#[placeholder-politica]">[Política de Privacidade]</a>
+          <a href="#[placeholder-termos]">[Termos de Uso]</a>
+          <a href="https://wa.me/[número com DDI]" target="_blank" rel="noopener noreferrer">[Suporte via WhatsApp]</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 LedsNet. Todos os direitos reservados. Plataforma de inteligência comercial em conformidade com a LGPD.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       SCRIPTS JAVASCRIPT EM UM ÚNICO ARQUIVO
+       ========================================================================== -->
+  <script>
+    // 1. Menu Mobile Hamburger
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const navMenu = document.getElementById('navMenu');
+
+    if (mobileMenuBtn && navMenu) {
+      mobileMenuBtn.addEventListener('click', () => {
+        navMenu.classList.toggle('open');
+      });
+
+      // Fechar menu ao clicar em um link
+      navMenu.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          navMenu.classList.remove('open');
+        });
+      });
+    }
+
+    // 2. Sombra no cabeçalho ao rolar
+    const header = document.getElementById('header');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 20) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    // 3. Accordion de Perguntas Frequentes (FAQ)
+    const faqItems = document.querySelectorAll('.faq-item');
+    faqItems.forEach(item => {
+      const questionBtn = item.querySelector('.faq-question');
+      questionBtn.addEventListener('click', () => {
+        const isActive = item.classList.contains('active');
+        
+        // Fecha todos os outros itens
+        faqItems.forEach(otherItem => otherItem.classList.remove('active'));
+
+        // Alterna o item atual
+        if (!isActive) {
+          item.classList.add('active');
+        }
+      });
+    });
+
+    // 4. Animações leves ao rolar a página (Fade & Slide suave com Intersection Observer)
+    const revealElements = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+            obs.unobserve(entry.target);
+          }
+        });
+      }, {
+        threshold: 0.12,
+        rootMargin: '0px 0px -40px 0px'
+      });
+
+      revealElements.forEach(el => observer.observe(el));
+    } else {
+      // Fallback para navegadores antigos sem IntersectionObserver
+      revealElements.forEach(el => el.classList.add('active'));
+    }
+  </script>
+</body>
+</html>
