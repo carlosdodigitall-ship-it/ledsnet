@@ -50,6 +50,7 @@ export function AuthRouter({ children }: { children: ReactNode }) {
   }, [loading, user, path, profileLoading, onboarded, profileCheckedFor]);
 
   if (loading || profileLoading) return <LoadingScreen />;
+  if (!isFirebaseConfigured && !['/termos', '/privacidade'].includes(path)) return <AuthScreen screen="entrar" />;
   if (path === '/painel') {
     if (!user || !user.emailVerified || profileCheckedFor !== user.uid + ':' + path || !onboarded) return <LoadingScreen />;
     return <>{children}</>;
