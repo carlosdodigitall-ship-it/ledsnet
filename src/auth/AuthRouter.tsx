@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { LoaderCircle } from 'lucide-react';
-import { auth, db, isFirebaseConfigured } from '../lib/firebase';
+import { db, isFirebaseConfigured } from '../lib/firebase';
 import { useAuth } from './AuthContext';
 import { AuthScreen } from './AuthScreens';
 
@@ -40,7 +40,7 @@ export function AuthRouter({ children }: { children: ReactNode }) {
     if (!isFirebaseConfigured) return;
     if (['/painel', '/configurar-conta'].includes(path)) {
       if (!user) { window.location.replace('/entrar?next=' + encodeURIComponent(window.location.pathname + window.location.search)); return; }
-      if (!user.emailVerified) { window.location.replace('/verificar-email'); return; }
+      if (!user.emailVerified) { window.location.replace('/verificar-email?next=' + encodeURIComponent(window.location.pathname + window.location.search)); return; }
     }
     if (path === '/verificar-email' && !user) { window.location.replace('/entrar'); return; }
     const profileChecked = profileCheckedFor === user?.uid + ':' + path;
