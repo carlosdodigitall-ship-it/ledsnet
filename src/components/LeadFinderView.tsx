@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Lead, SearchFilters } from '../types';
 import { calculateOpportunityScore } from '../services/scorer';
+import { auth } from '../lib/firebase';
 
 interface LeadFinderViewProps {
   existingLeads: Lead[];
@@ -76,9 +77,11 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
     setErrorMessage('');
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Sua sessão expirou. Entre novamente para pesquisar leads.');
       const response = await fetch('/api/leads/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           segment: segment.trim(),
           location: location.trim(),
