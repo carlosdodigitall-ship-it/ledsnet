@@ -36,6 +36,7 @@ export async function saveUserProfile(uid: string, values: Record<string, unknow
   await setDoc(doc(db, 'users', uid), {
     ...values,
     uid,
+    ownerId: uid,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 }
