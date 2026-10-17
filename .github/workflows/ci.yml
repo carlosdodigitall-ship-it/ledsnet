@@ -1,0 +1,24 @@
+name: Validar LedsNet
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feat/firebase-auth-firestore]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Verificar TypeScript
+        run: npm run lint
+      - name: Compilar aplicação
+        run: npm run build

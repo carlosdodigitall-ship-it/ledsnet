@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Lead, SearchFilters } from '../types';
 import { calculateOpportunityScore } from '../services/scorer';
+import { auth } from '../lib/firebase';
 
 interface LeadFinderViewProps {
   existingLeads: Lead[];
@@ -76,9 +77,11 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
     setErrorMessage('');
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Sua sessão expirou. Entre novamente para pesquisar leads.');
       const response = await fetch('/api/leads/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           segment: segment.trim(),
           location: location.trim(),
@@ -87,6 +90,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'A busca foi recusada pelo servidor.');
       if (data.notice && data.quotaExceeded) {
         setNoticeMessage(data.notice);
       } else {
@@ -123,7 +127,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
       }
     } catch (err: any) {
       console.warn('Falha na busca:', err);
-      setErrorMessage('Não foi possível conectar ao servidor de busca. Verifique sua conexão.');
+      setErrorMessage(err?.message || 'Não foi possível conectar ao servidor de busca. Verifique sua conexão.');
     } finally {
       setIsLoading(false);
     }
