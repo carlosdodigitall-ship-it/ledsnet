@@ -40,6 +40,7 @@ async function requireFirebaseUser(req: Request, res: Response, next: NextFuncti
   if (!token) return res.status(401).json({ error: 'Entre na sua conta para executar esta ação.' });
   try {
     const decoded: DecodedIdToken = await getAdminAuth().verifyIdToken(token);
+    if (decoded.email_verified !== true) return res.status(403).json({ error: 'Confirme seu e-mail antes de executar esta ação.' });
     (req as Request & { firebaseUser?: DecodedIdToken }).firebaseUser = decoded;
     next();
   } catch {
