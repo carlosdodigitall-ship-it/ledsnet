@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { cert, getApps as getAdminApps, initializeApp as initializeAdminApp, applicationDefault } from 'firebase-admin/app';
+import { getAuth as getAdminAuth, type DecodedIdToken } from 'firebase-admin/auth';
 
 dotenv.config();
 
@@ -13,6 +15,37 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
+
+// Firebase Admin: valida tokens de identidade antes de executar operações privadas.
+let firebaseAdminReady = false;
+try {
+  if (!getAdminApps().length) {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (serviceAccountJson) {
+      initializeAdminApp({ credential: cert(JSON.parse(serviceAccountJson)) });
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.K_SERVICE) {
+      initializeAdminApp({ credential: applicationDefault(), projectId: process.env.FIREBASE_PROJECT_ID });
+    }
+  }
+  firebaseAdminReady = getAdminApps().length > 0;
+} catch (error) {
+  console.error('[Firebase Admin] Não foi possível inicializar a autenticação:', error);
+}
+async function requireFirebaseUser(req: Request, res: Response, next: (error?: unknown) => void) {
+  if (!firebaseAdminReady) {
+    return res.status(503).json({ error: 'Autenticação do servidor não configurada. Configure as credenciais do Firebase Admin.' });
+  }
+  const authorization = req.header('Authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  if (!token) return res.status(401).json({ error: 'Entre na sua conta para executar esta ação.' });
+  try {
+    const decoded: DecodedIdToken = await getAdminAuth().verifyIdToken(token);
+    (req as Request & { firebaseUser?: DecodedIdToken }).firebaseUser = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Sua sessão expirou ou não é válida. Entre novamente.' });
+  }
+}
 
 // Inicialização do Google GenAI SDK (Server-Side)
 const apiKey = process.env.GEMINI_API_KEY || '';
@@ -39,7 +72,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Endpoint de Busca de Leads com Google Maps Grounding via Gemini 3.8 Flash
-app.post('/api/leads/search', async (req: Request, res: Response) => {
+app.post('/api/leads/search', requireFirebaseUser, async (req: Request, res: Response) => {
   const { segment = 'Climatização e Refrigeração', location = 'Salvador, BA', radiusKm = 15 } = req.body;
 
   try {
@@ -293,6 +326,15 @@ function generateContextualLeads(segment: string, location: string, radiusKm: nu
       openNow: i % 4 !== 0,
       source: 'google_places' as const,
     };
+  });
+}
+
+// Rotas de autenticação/painel usam uma entrada React separada; a landing em / continua pública.
+const appRoutes = ['/entrar', '/criar-conta', '/verificar-email', '/recuperar-senha', '/configurar-conta', '/painel', '/termos', '/privacidade'];
+for (const route of appRoutes) {
+  app.get(route, (_req: Request, res: Response, next) => {
+    const appHtml = path.resolve(__dirname, process.env.NODE_ENV === 'production' ? 'dist/app.html' : 'app.html');
+    res.sendFile(appHtml, (error) => { if (error) next(error); });
   });
 }
 
