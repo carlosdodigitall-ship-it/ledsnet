@@ -9,7 +9,7 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     /* ==========================================================================
@@ -838,6 +838,125 @@
         text-align: center;
       }
     }
+  
+    /* Identidade tipográfica LedsNet — refinamento premium */
+    :root {
+      --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+      --type-display: clamp(40px, 6vw, 72px);
+      --type-h2: clamp(28px, 4vw, 44px);
+      --type-h3: 20px;
+      --type-body: 17px;
+      --type-label: 13px;
+      --line-display: 1.05;
+      --line-heading: 1.15;
+      --line-body: 1.65;
+      --tracking-display: -0.03em;
+      --tracking-brand: -0.02em;
+      --led-glow: 0 0 12px rgba(96, 165, 250, .4);
+    }
+    body { font-family: var(--font-body); font-size: var(--type-body); line-height: var(--line-body); }
+    h1, h2, h3, .hero-title, .section-title { font-family: var(--font-display); }
+    h2, .section-title { font-size: var(--type-h2); line-height: var(--line-heading); font-weight: 700; letter-spacing: -.025em; }
+    h3 { font-size: var(--type-h3); font-weight: 600; line-height: 1.3; }
+    p, .hero-subtitle { font-size: max(16px, 1em); line-height: var(--line-body); }
+    .eyebrow, .section-label, .hero-badge { letter-spacing: .08em; }
+    .hero-title {
+      font-size: var(--type-display);
+      line-height: var(--line-display);
+      letter-spacing: var(--tracking-display);
+      font-weight: 700;
+      text-wrap: balance;
+    }
+    .gradient-text, .hero-title .highlight {
+      color: var(--azul-principal);
+      background: linear-gradient(100deg, #1D4ED8 0%, #60A5FA 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    @supports not (-webkit-background-clip: text) {
+      .gradient-text, .hero-title .highlight { color: #1D4ED8; background: none; }
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      white-space: nowrap;
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: var(--tracking-brand);
+      line-height: 1;
+      font-size: clamp(20px, 2vw, 24px);
+      flex-shrink: 0;
+    }
+    .logo-word-leds { color: var(--azul-escuro); }
+    .logo-word-net { color: var(--azul-principal); }
+    .logo-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      min-width: 6px;
+      border-radius: 50%;
+      margin-left: 5px;
+      background: var(--azul-destaque);
+      box-shadow: var(--led-glow);
+    }
+    .logo--dark .logo-word-leds { color: #FFFFFF; }
+    .logo--dark .logo-word-net { color: #60A5FA; }
+    .logo--dark .logo-dot { background: #60A5FA; }
+    .logo-icon {
+      display: inline-grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 12px;
+      background: #0B1F44;
+      color: #FFFFFF;
+      font: 700 15px/1 var(--font-display);
+      letter-spacing: -.06em;
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.22);
+    }
+    .logo-icon .logo-icon-n { color: #60A5FA; }
+    .ledsnet-marquee {
+      --marquee-bg: #0B1F44;
+      position: relative;
+      overflow: hidden;
+      background: var(--marquee-bg);
+      color: #FFFFFF;
+      padding: 16px 0;
+      border-block: 1px solid rgba(96,165,250,.2);
+      mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    }
+    .ledsnet-marquee__track {
+      display: flex;
+      width: max-content;
+      align-items: center;
+      animation: ledsnet-marquee-scroll 40s linear infinite;
+    }
+    .ledsnet-marquee:hover .ledsnet-marquee__track { animation-play-state: paused; }
+    .ledsnet-marquee__group { display: flex; align-items: center; flex-shrink: 0; gap: 34px; padding-right: 34px; }
+    .ledsnet-marquee__item { display: inline-flex; align-items: center; gap: 34px; white-space: nowrap; font: 600 14px/1.5 var(--font-body); color: #FFFFFF; }
+    .ledsnet-marquee__led { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #60A5FA; box-shadow: var(--led-glow); }
+    @keyframes ledsnet-marquee-scroll { to { transform: translateX(-50%); } }
+    .logo:focus-visible, a:focus-visible, button:focus-visible { outline: 3px solid #60A5FA; outline-offset: 4px; }
+    @media (max-width: 480px) {
+      .nav-container { gap: 12px; }
+      .logo { font-size: 20px; }
+      .ledsnet-marquee__item { font-size: 13px; }
+      .hero-title { overflow-wrap: normal; hyphens: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .ledsnet-marquee { mask-image: none; -webkit-mask-image: none; overflow: visible; }
+      .ledsnet-marquee__track { animation: none; width: 100%; flex-wrap: wrap; justify-content: center; gap: 10px 20px; }
+      .ledsnet-marquee__group { display: contents; padding: 0; }
+      .ledsnet-marquee__item { white-space: normal; gap: 12px; }
+      .ledsnet-marquee__item:nth-child(n+3) { display: none; }
+      *, *::before, *::after { scroll-behavior: auto !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -847,10 +966,7 @@
        ========================================================================== -->
   <header id="header">
     <div class="container nav-container">
-      <a href="#" class="logo">
-        <span class="logo-dot"></span>
-        <span>LedsNet</span>
-      </a>
+      <a href="#" class="logo" aria-label="LedsNet"><span class="logo-word-leds">Leds</span><span class="logo-word-net">Net</span><span class="logo-dot" aria-hidden="true"></span></a>
 
       <nav class="nav-menu" id="navMenu">
         <a href="#recursos" class="nav-link">Recursos</a>
@@ -961,6 +1077,23 @@
       </div>
     </div>
   </section>
+    <section class="ledsnet-marquee" aria-label="Benefícios do LedsNet">
+      <div class="ledsnet-marquee__track">
+        <div class="ledsnet-marquee__group">
+          <span class="ledsnet-marquee__item">Encontre leads por região <span class="ledsnet-marquee__led" aria-hidden="true"></span></span>
+          <span class="ledsnet-marquee__item">Priorize com score <span class="ledsnet-marquee__led" aria-hidden="true"></span></span>
+          <span class="ledsnet-marquee__item">Feche pelo WhatsApp <span class="ledsnet-marquee__led" aria-hidden="true"></span></span>
+          <span class="ledsnet-marquee__item">Dados protegidos pela LGPD <span class="ledsnet-marquee__led" aria-hidden="true"></span></span>
+        </div>
+        <div class="ledsnet-marquee__group" aria-hidden="true">
+          <span class="ledsnet-marquee__item">Encontre leads por região <span class="ledsnet-marquee__led"></span></span>
+          <span class="ledsnet-marquee__item">Priorize com score <span class="ledsnet-marquee__led"></span></span>
+          <span class="ledsnet-marquee__item">Feche pelo WhatsApp <span class="ledsnet-marquee__led"></span></span>
+          <span class="ledsnet-marquee__item">Dados protegidos pela LGPD <span class="ledsnet-marquee__led"></span></span>
+        </div>
+      </div>
+    </section>
+
 
   <!-- ==========================================================================
        3. COMO FUNCIONA (3 PASSOS NUMERADOS)
@@ -1276,10 +1409,7 @@
   <footer>
     <div class="container">
       <div class="footer-content">
-        <div class="logo" style="color: var(--branco);">
-          <span class="logo-dot"></span>
-          <span>LedsNet</span>
-        </div>
+        <div class="logo logo--dark" aria-label="LedsNet"><span class="logo-word-leds">Leds</span><span class="logo-word-net">Net</span><span class="logo-dot" aria-hidden="true"></span></div>
 
         <div class="footer-links">
           <a href="#[placeholder-politica]">[Política de Privacidade]</a>
