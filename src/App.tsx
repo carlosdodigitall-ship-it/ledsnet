@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  getStoredAccessKey,
-  setStoredAccessKey,
-  clearStoredAccessKey,
-  loadLeads,
-  saveLeads,
-  loadTasks,
-  saveTasks,
-  loadInteractions,
-  saveInteractions,
-  loadTemplates,
-  saveTemplates,
-  exportLeadsToCSV,
-  DEFAULT_ACCESS_KEY,
-} from './services/storage';
+import { exportLeadsToCSV, INITIAL_TEMPLATES } from './services/storage';
+import { loadOwnedCollection, saveOwnedCollection } from './services/firestoreStorage';
+import { useAuth } from './auth/AuthContext';
+import { auth } from './lib/firebase';
+import { signOut } from 'firebase/auth';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
 import { Header } from './components/Header';
-import { KeyModal } from './components/KeyModal';
 import { DashboardView } from './components/DashboardView';
 import { LeadFinderView } from './components/LeadFinderView';
 import { KanbanView } from './components/KanbanView';
@@ -30,9 +19,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { ManualLeadModal } from './components/ManualLeadModal';
 import { Sidebar } from './components/Sidebar';
 
-export default function App() {
+function DashboardApp() {
+  const { user } = useAuth();
   const [accessKey, setAccessKey] = useState<string>('');
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'finder' | 'kanban' | 'tasks' | 'prd' | 'capture'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopPinned, setIsDesktopPinned] = useState(true);
@@ -50,62 +39,60 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isManualLeadOpen, setIsManualLeadOpen] = useState(false);
 
-  // Inicialização
+  // Inicialização isolada por usuário: nenhum lead de demonstração é carregado.
   useEffect(() => {
-    const key = getStoredAccessKey();
-    if (key) {
-      setAccessKey(key);
-      setIsUnlocked(true);
-    } else {
-      // Se não houver chave armazenada, abre com a demo pré-configurada
-      setAccessKey(DEFAULT_ACCESS_KEY);
-      setIsUnlocked(true);
-      setStoredAccessKey(DEFAULT_ACCESS_KEY);
-    }
-
-    setLeads(loadLeads());
-    setTasks(loadTasks());
-    setInteractions(loadInteractions());
-    setTemplates(loadTemplates());
-  }, []);
+    if (!user?.uid) return;
+    let active = true;
+    Promise.all([
+      loadOwnedCollection<Lead>(user.uid, 'leads'),
+      loadOwnedCollection<Task>(user.uid, 'tasks'),
+      loadOwnedCollection<Interaction>(user.uid, 'interactions'),
+      loadOwnedCollection<MessageTemplate>(user.uid, 'templates'),
+    ]).then(async ([ownedLeads, ownedTasks, ownedInteractions, ownedTemplates]) => {
+      if (!active) return;
+      setLeads(ownedLeads);
+      setTasks(ownedTasks);
+      setInteractions(ownedInteractions);
+      if (ownedTemplates.length) setTemplates(ownedTemplates);
+      else {
+        setTemplates(INITIAL_TEMPLATES);
+        await saveOwnedCollection(user.uid, 'templates', INITIAL_TEMPLATES);
+      }
+    }).catch((error) => {
+      console.error('[LedsNet] Falha ao carregar dados da conta:', error);
+      if (active) alert('Não foi possível carregar seus dados. Confira sua conexão e as regras do Firestore.');
+    });
+    return () => { active = false; };
+  }, [user?.uid]);
 
   // Sincronização automática com localStorage
   const updateLeads = (newLeads: Lead[]) => {
     setLeads(newLeads);
-    saveLeads(newLeads);
+    if (user?.uid) void saveOwnedCollection(user.uid, 'leads', newLeads).catch(() => alert('Não foi possível salvar os leads no Firestore.'));
   };
 
   const updateTasks = (newTasks: Task[]) => {
     setTasks(newTasks);
-    saveTasks(newTasks);
+    if (user?.uid) void saveOwnedCollection(user.uid, 'tasks', newTasks).catch(() => alert('Não foi possível salvar as tarefas no Firestore.'));
   };
 
   const updateInteractions = (newInteractions: Interaction[]) => {
     setInteractions(newInteractions);
-    saveInteractions(newInteractions);
+    if (user?.uid) void saveOwnedCollection(user.uid, 'interactions', newInteractions).catch(() => alert('Não foi possível salvar as interações no Firestore.'));
   };
 
   const updateTemplates = (newTemplates: MessageTemplate[]) => {
     setTemplates(newTemplates);
-    saveTemplates(newTemplates);
+    if (user?.uid) void saveOwnedCollection(user.uid, 'templates', newTemplates).catch(() => alert('Não foi possível salvar os templates no Firestore.'));
   };
 
-  // Autenticação por chave
-  const handleUnlock = (key: string) => {
-    setStoredAccessKey(key);
-    setAccessKey(key);
-    setIsUnlocked(true);
-  };
-
+  // A sessão real é gerenciada pelo Firebase Authentication.
   const handleLogout = () => {
-    clearStoredAccessKey();
-    setAccessKey('');
-    setIsUnlocked(false);
+    void signOut(auth).finally(() => window.location.assign('/entrar'));
   };
 
-  const handleUpdateKey = (newKey: string) => {
-    setStoredAccessKey(newKey);
-    setAccessKey(newKey);
+  const handleUpdateKey = (_newKey: string) => {
+    alert('Chaves de integração não podem ser armazenadas no navegador. Configure-as como segredos no servidor.');
   };
 
   // Ações de Leads
@@ -242,7 +229,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
       {/* Modal de Bloqueio por Chave Privada */}
-      <KeyModal isOpen={!isUnlocked} onUnlock={handleUnlock} />
 
       {/* Top Bar Header com Botão da Gaveta Lateral */}
       <Header
@@ -385,4 +371,8 @@ export default function App() {
       />
     </div>
   );
+}
+
+export default function App() {
+  return <DashboardApp />;
 }
