@@ -13,6 +13,7 @@ export function AuthRouter({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [path, setPath] = useState(window.location.pathname);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileCheckedFor, setProfileCheckedFor] = useState('');
   const [onboarded, setOnboarded] = useState(false);
 
   useEffect(() => {
@@ -24,12 +25,13 @@ export function AuthRouter({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !user || !user.emailVerified || !['/painel', '/configurar-conta'].includes(path)) return;
     let active = true;
+    const checkKey = user.uid + ':' + path;
     setProfileLoading(true);
     getDoc(doc(db, 'users', user.uid)).then(snapshot => {
       if (active) setOnboarded(snapshot.exists() && snapshot.data().onboardingCompleted === true);
     }).catch(() => {
       if (active) setOnboarded(false);
-    }).finally(() => { if (active) setProfileLoading(false); });
+    }).finally(() => { if (active) { setProfileCheckedFor(checkKey); setProfileLoading(false); } });
     return () => { active = false; };
   }, [loading, user?.uid, user?.emailVerified, path]);
 
@@ -41,18 +43,19 @@ export function AuthRouter({ children }: { children: ReactNode }) {
       if (!user.emailVerified) { window.location.replace('/verificar-email'); return; }
     }
     if (path === '/verificar-email' && !user) { window.location.replace('/entrar'); return; }
-    if (path === '/painel' && !profileLoading && !onboarded) window.location.replace('/configurar-conta');
-    if (path === '/configurar-conta' && !profileLoading && onboarded) window.location.replace('/painel');
+    const profileChecked = profileCheckedFor === user?.uid + ':' + path;
+    if (path === '/painel' && profileChecked && !profileLoading && !onboarded) window.location.replace('/configurar-conta');
+    if (path === '/configurar-conta' && profileChecked && !profileLoading && onboarded) window.location.replace('/painel');
     if (!publicScreens.has(path) && path !== '/painel' && path !== '/') window.location.replace('/');
-  }, [loading, user, path, profileLoading, onboarded]);
+  }, [loading, user, path, profileLoading, onboarded, profileCheckedFor]);
 
   if (loading || profileLoading) return <LoadingScreen />;
   if (path === '/painel') {
-    if (!user || !user.emailVerified || !onboarded) return <LoadingScreen />;
+    if (!user || !user.emailVerified || profileCheckedFor !== user.uid + ':' + path || !onboarded) return <LoadingScreen />;
     return <>{children}</>;
   }
   if (path === '/configurar-conta') {
-    if (!user || !user.emailVerified || onboarded) return <LoadingScreen />;
+    if (!user || !user.emailVerified || profileCheckedFor !== user.uid + ':' + path || onboarded) return <LoadingScreen />;
     return <AuthScreen screen="configurar-conta" />;
   }
   if (path === '/verificar-email') return <AuthScreen screen="verificar-email" />;
