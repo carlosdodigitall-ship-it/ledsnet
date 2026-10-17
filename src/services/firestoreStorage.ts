@@ -1,13 +1,13 @@
-import { collection, doc, getDocs, writeBatch, type DocumentData } from 'firebase/firestore';
+import { collection, doc, getDocs, query, where, writeBatch, setDoc, type DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 const ownedCollections = ['leads', 'tasks', 'interactions', 'templates'] as const;
 export type OwnedCollection = typeof ownedCollections[number];
 
 export async function loadOwnedCollection<T>(ownerId: string, name: OwnedCollection): Promise<T[]> {
-  const snapshot = await getDocs(collection(db, name));
+  const snapshot = await getDocs(query(collection(db, name), where('ownerId', '==', ownerId)));
   return snapshot.docs
-    .filter((item) => item.data().ownerId === ownerId)
+    
     .map((item) => ({ ...item.data(), id: item.id } as T));
 }
 
@@ -18,8 +18,8 @@ export async function saveOwnedCollection<T extends { id: string }>(
   values: T[],
 ): Promise<void> {
   if (!ownerId) throw new Error('É necessário entrar na conta para salvar os dados.');
-  const snapshot = await getDocs(collection(db, name));
-  const ownDocs = snapshot.docs.filter((item) => item.data().ownerId === ownerId);
+  const snapshot = await getDocs(query(collection(db, name), where('ownerId', '==', ownerId)));
+  const ownDocs = snapshot.docs;
   const batch = writeBatch(db);
   ownDocs.forEach((item) => batch.delete(item.ref));
   values.forEach((value) => {
@@ -33,7 +33,7 @@ export async function saveOwnedCollection<T extends { id: string }>(
 }
 
 export async function saveUserProfile(uid: string, values: Record<string, unknown>) {
-  await (await import('firebase/firestore')).setDoc(doc(db, 'users', uid), {
+  await setDoc(doc(db, 'users', uid), {
     ...values,
     uid,
     updatedAt: new Date().toISOString(),
