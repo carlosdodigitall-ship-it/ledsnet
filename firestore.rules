@@ -20,10 +20,10 @@ service cloud.firestore {
     }
 
     match /{collectionName}/{documentId} {
-      allow get, list: if ownsExistingDocument();
-      allow create: if ownsNewDocument();
-      allow update: if ownsExistingDocument() && ownsNewDocument();
-      allow delete: if ownsExistingDocument();
+      allow get, list: if collectionName != 'users' && ownsExistingDocument();
+      allow create: if collectionName != 'users' && ownsNewDocument();
+      allow update: if collectionName != 'users' && ownsExistingDocument() && ownsNewDocument();
+      allow delete: if collectionName != 'users' && ownsExistingDocument();
     }
 
     match /{document=**} {
