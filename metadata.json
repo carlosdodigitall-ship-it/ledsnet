@@ -1,0 +1,6 @@
+{
+  "name": "LedsNet - Prospecção e Captação de Leads Locais",
+  "description": "Plataforma inteligente de busca de leads no Google Places, qualificação por Opportunity Score e gestão comercial via funil WhatsApp.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
