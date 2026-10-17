@@ -8,7 +8,7 @@ export async function loadOwnedCollection<T>(ownerId: string, name: OwnedCollect
   const snapshot = await getDocs(query(collection(db, name), where('ownerId', '==', ownerId)));
   return snapshot.docs
     
-    .map((item) => ({ ...item.data(), id: item.id } as T));
+    .map((item) => ({ ...item.data(), id: item.data().id || item.id } as T));
 }
 
 /** Replace the signed-in user's collection using atomic batches and a server-enforced ownerId. */
@@ -24,7 +24,7 @@ export async function saveOwnedCollection<T extends { id: string }>(
   ownDocs.forEach((item) => batch.delete(item.ref));
   values.forEach((value) => {
     const { id, ...fields } = value as T & DocumentData;
-    batch.set(doc(db, name, id), { ...fields, id, ownerId });
+    batch.set(doc(db, name, `${ownerId}__${id}`), { ...fields, id, ownerId });
   });
   if (ownDocs.length + values.length > 450) {
     throw new Error('Muitos registros para uma única operação. Divida a atualização em lotes.');
