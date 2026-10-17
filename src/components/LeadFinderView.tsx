@@ -90,6 +90,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'A busca foi recusada pelo servidor.');
       if (data.notice && data.quotaExceeded) {
         setNoticeMessage(data.notice);
       } else {
@@ -126,7 +127,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
       }
     } catch (err: any) {
       console.warn('Falha na busca:', err);
-      setErrorMessage('Não foi possível conectar ao servidor de busca. Verifique sua conexão.');
+      setErrorMessage(err?.message || 'Não foi possível conectar ao servidor de busca. Verifique sua conexão.');
     } finally {
       setIsLoading(false);
     }
