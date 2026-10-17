@@ -39,7 +39,7 @@ export function AuthRouter({ children }: { children: ReactNode }) {
     if (loading) return;
     if (!isFirebaseConfigured) return;
     if (['/painel', '/configurar-conta'].includes(path)) {
-      if (!user) { window.location.replace('/entrar'); return; }
+      if (!user) { window.location.replace('/entrar?next=' + encodeURIComponent(window.location.pathname + window.location.search)); return; }
       if (!user.emailVerified) { window.location.replace('/verificar-email'); return; }
     }
     if (path === '/verificar-email' && !user) { window.location.replace('/entrar'); return; }
