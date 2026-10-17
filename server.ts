@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -31,7 +31,7 @@ try {
 } catch (error) {
   console.error('[Firebase Admin] Não foi possível inicializar a autenticação:', error);
 }
-async function requireFirebaseUser(req: Request, res: Response, next: (error?: unknown) => void) {
+async function requireFirebaseUser(req: Request, res: Response, next: NextFunction) {
   if (!firebaseAdminReady) {
     return res.status(503).json({ error: 'Autenticação do servidor não configurada. Configure as credenciais do Firebase Admin.' });
   }
