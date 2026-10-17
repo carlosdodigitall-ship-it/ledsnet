@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import {
   X,
-  KeyRound,
   Download,
   Upload,
   LogOut,
   Shield,
-  Copy,
-  Check,
   FileSpreadsheet,
   MessageSquare,
   AlertTriangle
@@ -17,8 +14,6 @@ import { MessageTemplate, Lead } from '../types';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accessKey: string;
-  onUpdateKey: (newKey: string) => void;
   onLogout: () => void;
   onExportCSV: () => void;
   leads: Lead[];
@@ -30,8 +25,6 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  accessKey,
-  onUpdateKey,
   onLogout,
   onExportCSV,
   leads,
@@ -39,28 +32,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   templates,
   onUpdateTemplates,
 }) => {
-  const [keyInput, setKeyInput] = useState(accessKey);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'access' | 'templates' | 'backup'>('access');
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
-
-  const currentUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?key=${encodeURIComponent(accessKey)}` : '';
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(currentUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
-
-  const handleSaveKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyInput.trim()) return;
-    onUpdateKey(keyInput.trim());
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
-  };
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(leads, null, 2);
@@ -107,7 +81,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 Configurações & Segurança
               </h3>
               <p className="text-xs text-slate-400">
-                Chave de acesso privado, backups e templates de abordagem
+                Segurança da conta, backups e templates de abordagem
               </p>
             </div>
           </div>
@@ -129,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            Acesso & Link Privado
+            Conta & Segurança
           </button>
           <button
             onClick={() => setActiveTab('templates')}
@@ -153,77 +127,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Aba 1: Acesso Privado */}
+        {/* Aba 1: Conta e segurança */}
         {activeTab === 'access' && (
           <div className="space-y-5">
-            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-350">
-              <span className="font-semibold text-white block mb-1">Como funciona o acesso do LedsNet:</span>
-              <span>
-                Você e sua equipe não precisam de usuário nem senha. O link privado abaixo concede acesso instantâneo ao painel. Guarde-o ou compartilhe apenas com sua equipe comercial.
-              </span>
+            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-sm text-slate-300">
+              <span className="font-semibold text-white block mb-2">Sua conta é protegida pelo Firebase Authentication.</span>
+              O acesso ao painel exige uma sessão válida e e-mail verificado. Seus leads, tarefas e configurações são armazenados no Firestore com isolamento por usuário.
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-350 uppercase tracking-wider mb-1.5">
-                Link de Acesso Direto com Token
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={currentUrl}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 font-mono-numbers outline-none select-all"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                >
-                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copiado!' : 'Copiar'}</span>
-                </button>
-              </div>
+            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-blue-300 text-xs font-semibold"><Shield className="w-4 h-4" /> Boas práticas de segurança</div>
+              <ul className="list-disc pl-5 text-xs text-slate-400 space-y-1.5">
+                <li>Não compartilhe sua senha nem links de sessão.</li>
+                <li>Chaves da API e tokens de integração devem ficar somente no servidor.</li>
+                <li>Use o botão abaixo para encerrar a sessão neste dispositivo.</li>
+              </ul>
             </div>
-
-            <form onSubmit={handleSaveKey} className="space-y-3 pt-2 border-t border-slate-800">
-              <label className="block text-xs font-semibold text-slate-350 uppercase tracking-wider">
-                Alterar Chave Mestra
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  placeholder="Defina uma chave personalizada..."
-                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-white outline-none font-mono-numbers"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer shrink-0"
-                >
-                  Salvar Chave
-                </button>
-              </div>
-              {savedSuccess && (
-                <p className="text-xs text-emerald-400">Chave de acesso atualizada com sucesso!</p>
-              )}
-            </form>
-
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-500">Sair deste navegador com segurança:</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('Deseja encerrar a sessão neste navegador? Você precisará inserir a chave para entrar novamente.')) {
-                    onLogout();
-                    onClose();
-                  }
-                }}
-                className="px-3 py-1.5 rounded-lg border border-rose-800/60 text-rose-400 hover:bg-rose-950/40 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Encerrar Sessão</span>
-              </button>
+            <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+              <div><span className="text-xs font-semibold text-white block">Sair da conta</span><span className="text-xs text-slate-500">Será necessário entrar novamente para acessar o painel.</span></div>
+              <button type="button" onClick={() => { if (confirm('Deseja sair da sua conta LedsNet neste dispositivo?')) { onLogout(); onClose(); } }} className="px-3 py-2 rounded-lg border border-rose-800/60 text-rose-400 hover:bg-rose-950/40 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"><LogOut className="w-3.5 h-3.5" /><span>Sair</span></button>
             </div>
           </div>
         )}
