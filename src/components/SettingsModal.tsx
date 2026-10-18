@@ -6,8 +6,6 @@ import {
   Upload,
   LogOut,
   Shield,
-  Copy,
-  Check,
   FileSpreadsheet,
   MessageSquare,
   AlertTriangle
@@ -17,8 +15,6 @@ import { MessageTemplate, Lead } from '../types';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accessKey: string;
-  onUpdateKey: (newKey: string) => void;
   onLogout: () => void;
   onExportCSV: () => void;
   leads: Lead[];
@@ -30,8 +26,6 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  accessKey,
-  onUpdateKey,
   onLogout,
   onExportCSV,
   leads,
@@ -39,28 +33,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   templates,
   onUpdateTemplates,
 }) => {
-  const [keyInput, setKeyInput] = useState(accessKey);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'access' | 'templates' | 'backup'>('access');
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
-
-  const currentUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?key=${encodeURIComponent(accessKey)}` : '';
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(currentUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
-
-  const handleSaveKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!keyInput.trim()) return;
-    onUpdateKey(keyInput.trim());
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
-  };
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(leads, null, 2);
@@ -153,76 +128,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Aba 1: Acesso Privado */}
+        {/* Aba 1: Segurança Firebase */}
         {activeTab === 'access' && (
           <div className="space-y-5">
-            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-350">
-              <span className="font-semibold text-white block mb-1">Como funciona o acesso do LedsNet:</span>
-              <span>
-                Você e sua equipe não precisam de usuário nem senha. O link privado abaixo concede acesso instantâneo ao painel. Guarde-o ou compartilhe apenas com sua equipe comercial.
-              </span>
+            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800">
+              <span className="font-semibold text-white block mb-2">Autenticação e banco de dados</span>
+              <p className="text-sm text-slate-300">
+                O acesso é protegido pelo Firebase Authentication. Cada pessoa deve entrar com sua própria conta; um link compartilhado não substitui o login.
+              </p>
+              <p className="text-xs text-slate-400 mt-3">
+                Os leads, tarefas, interações, modelos e configurações ficam no Cloud Firestore, separados por usuário.
+              </p>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-350 uppercase tracking-wider mb-1.5">
-                Link de Acesso Direto com Token
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={currentUrl}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 font-mono-numbers outline-none select-all"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                >
-                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copiado!' : 'Copiar'}</span>
-                </button>
+            <div className="flex items-center justify-between gap-3 border border-slate-800 rounded-xl p-3">
+              <div>
+                <p className="text-xs text-slate-400">Conta conectada</p>
+                <p className="text-sm text-white break-all">{accessKey || 'Conta Firebase autenticada'}</p>
               </div>
-            </div>
-
-            <form onSubmit={handleSaveKey} className="space-y-3 pt-2 border-t border-slate-800">
-              <label className="block text-xs font-semibold text-slate-350 uppercase tracking-wider">
-                Alterar Chave Mestra
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  placeholder="Defina uma chave personalizada..."
-                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-white outline-none font-mono-numbers"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer shrink-0"
-                >
-                  Salvar Chave
-                </button>
-              </div>
-              {savedSuccess && (
-                <p className="text-xs text-emerald-400">Chave de acesso atualizada com sucesso!</p>
-              )}
-            </form>
-
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-500">Sair deste navegador com segurança:</span>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm('Deseja encerrar a sessão neste navegador? Você precisará inserir a chave para entrar novamente.')) {
-                    onLogout();
-                    onClose();
-                  }
-                }}
-                className="px-3 py-1.5 rounded-lg border border-rose-800/60 text-rose-400 hover:bg-rose-950/40 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                onClick={onLogout}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Encerrar Sessão</span>
+                <LogOut className="w-4 h-4" /> Sair
               </button>
             </div>
           </div>
