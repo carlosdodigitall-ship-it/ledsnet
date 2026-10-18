@@ -22,6 +22,7 @@ export interface Lead {
   endereco: string;
   telefone: string; // Formato E.164 sem o +
   place_id?: string;
+  placeId?: string;
   nota: number;
   numeroAvaliacoes: number;
   site?: string | null;
@@ -41,6 +42,7 @@ export interface Lead {
   address?: string;
   city?: string;
   phone?: string;
+  email?: string;
   whatsapp?: string;
   website?: string | null;
   rating?: number;

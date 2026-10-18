@@ -3,7 +3,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
-import { serverDb } from './src/server/db.js';
+import { getAuth } from 'firebase-admin/auth';
+import { getApps } from 'firebase-admin/app';
+import { serverDb, getServerFirestore } from './src/server/db.js';
+import scraperRouter from './src/server/scraperRoutes.js';
 
 dotenv.config();
 
@@ -14,7 +17,7 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Configuração de Chave de Acesso Privada
-const ACCESS_KEY = process.env.ACCESS_KEY || 'LEDS-PRO-2026';
+const ACCESS_KEY = process.env.ACCESS_KEY || '';
 
 // Configurações da Evolution API
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
@@ -38,27 +41,27 @@ if (apiKey) {
   });
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use('/api/scraper', scraperRouter);
 
 // ============================================================================
-// 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
+// 1. MIDDLEWARE DE AUTENTICAÇÃO FIREBASE (Zero-Trust)
 // ============================================================================
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const headerKey = req.headers['x-access-key'] as string;
-  const authHeader = req.headers['authorization'];
-  const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  const queryKey = req.query.key as string;
-
-  const providedKey = headerKey || bearerKey || queryKey;
-
-  if (!providedKey || providedKey !== ACCESS_KEY) {
-    return res.status(401).json({
-      error: 'Acesso negado: chave de acesso inválida ou ausente.',
-      message: 'Forneça a chave privada no cabeçalho x-access-key ou Authorization: Bearer <key>.'
-    });
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return res.status(401).json({ error: 'Sessão Firebase ausente. Entre novamente na plataforma.' });
   }
-
-  next();
+  try {
+    const app = getApps()[0];
+    if (!app) return res.status(503).json({ error: 'Firebase Admin não está inicializado.' });
+    const decoded = await getAuth(app).verifyIdToken(token);
+    (req as Request & { firebaseUid?: string }).firebaseUid = decoded.uid;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Sessão Firebase inválida ou expirada. Entre novamente.' });
+  }
 }
 
 // Endpoint para validação da chave de acesso no login do painel
@@ -180,9 +183,12 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
       }
     }
 
-    // 3. Fallback de dados representativos para garantir continuidade se APIs estiverem sem cota
+    // Não inventa estabelecimentos quando as fontes reais falham.
     if (rawPlaces.length === 0) {
-      rawPlaces = generateRepresentativePlaces(segment, location, radiusKm);
+      return res.status(503).json({
+        error: 'Nenhuma fonte real de pesquisa respondeu. Configure GOOGLE_PLACES_API_KEY ou GEMINI_API_KEY, ou use a opção de extração por scraper com a VPS configurada.',
+        sourceUnavailable: true,
+      });
     }
 
     // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
@@ -259,74 +265,85 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
 });
 
 // ============================================================================
-// 3. GESTÃO DE LEADS (CRUD Autenticado)
-// ============================================================================
+ // 3. GESTÃO DE LEADS (Firestore isolado por usuário autenticado)
+ // ============================================================================
+type FirebaseRequest = Request & { firebaseUid?: string };
+function userLeads(req: Request) {
+  const uid = (req as FirebaseRequest).firebaseUid;
+  if (!uid) throw new Error('Sessão Firebase ausente.');
+  return getServerFirestore().collection('users').doc(uid).collection('leads');
+}
+
 app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
     const { status, ramo, regiao, search } = req.query as any;
-    const leads = await serverDb.getLeads({ status, ramo, regiao, search });
+    const snapshot = await userLeads(req).get();
+    let leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (status && status !== 'todos') leads = leads.filter((lead: any) => lead.status === status);
+    if (ramo && ramo !== 'todos') leads = leads.filter((lead: any) => lead.ramo === ramo || lead.segment === ramo);
+    if (regiao) leads = leads.filter((lead: any) => String(lead.regiao || lead.city || '').toLowerCase().includes(String(regiao).toLowerCase()));
+    if (search) leads = leads.filter((lead: any) => [lead.nome, lead.name, lead.telefone, lead.phone, lead.email, lead.site, lead.website].some(value => String(value || '').toLowerCase().includes(String(search).toLowerCase())));
     res.json({ success: true, count: leads.length, leads });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao buscar leads', details: err?.message });
+    res.status(500).json({ error: 'Erro ao buscar leads no Firestore', details: err?.message });
   }
 });
 
 app.get('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const lead = await serverDb.getLeadById(req.params.id);
-    if (!lead) {
-      return res.status(404).json({ error: 'Lead não encontrado.' });
-    }
-    const interacoes = await serverDb.getInteractionsByLead(req.params.id);
-    res.json({ success: true, lead, interacoes });
+    const doc = await userLeads(req).doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    res.json({ success: true, lead: { id: doc.id, ...doc.data() }, interacoes: [] });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao carregar detalhes do lead', details: err?.message });
+    res.status(500).json({ error: 'Erro ao carregar lead', details: err?.message });
   }
 });
 
 app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
-    const leadData = req.body;
-    if (!leadData.nome || !leadData.telefone) {
-      return res.status(400).json({ error: 'Nome e telefone são obrigatórios.' });
+    const data = req.body || {};
+    const nome = String(data.nome || data.name || '').trim();
+    const telefone = String(data.telefone || data.phone || '').trim();
+    const email = String(data.email || '').trim();
+    if (!nome) return res.status(400).json({ error: 'Nome da empresa é obrigatório.' });
+    const collection = userLeads(req);
+    if (data.place_id || data.placeId) {
+      const placeId = String(data.place_id || data.placeId);
+      const duplicate = await collection.where('place_id', '==', placeId).limit(1).get();
+      if (!duplicate.empty) return res.status(409).json({ error: 'Esta empresa já está salva na sua lista.', lead: { id: duplicate.docs[0].id, ...duplicate.docs[0].data() } });
     }
-
-    // Verifica duplicado por place_id se informado
-    if (leadData.place_id) {
-      const existing = await serverDb.findLeadByPlaceId(leadData.place_id);
-      if (existing) {
-        return res.status(409).json({ error: 'Lead com este place_id já existe.', lead: existing });
-      }
-    }
-
-    const saved = await serverDb.saveLead(leadData);
-    res.status(201).json({ success: true, lead: saved });
+    const ref = collection.doc(typeof data.id === 'string' && data.id.length < 120 ? data.id : undefined);
+    const lead = {
+      ...data,
+      nome,
+      name: nome,
+      telefone,
+      phone: telefone,
+      email,
+      id: ref.id,
+      criadoEm: data.criadoEm || data.createdAt || new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+      status: data.status || 'novo',
+    };
+    await ref.set(lead, { merge: true });
+    res.status(201).json({ success: true, lead });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao salvar lead', details: err?.message });
+    res.status(500).json({ error: 'Erro ao salvar lead no Firestore', details: err?.message });
   }
 });
 
 app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { status, motivoPerda, proximoContato, nota, site, ramo, regiao } = req.body;
-    const lead = await serverDb.getLeadById(req.params.id);
-    if (!lead) {
-      return res.status(404).json({ error: 'Lead não encontrado.' });
-    }
-
-    const updated = await serverDb.saveLead({
-      ...lead,
-      ...(status && { status }),
-      ...(motivoPerda !== undefined && { motivoPerda }),
-      ...(proximoContato !== undefined && { proximoContato }),
-      ...(nota !== undefined && { nota }),
-      ...(site !== undefined && { site }),
-      ...(ramo !== undefined && { ramo }),
-      ...(regiao !== undefined && { regiao }),
-      atualizadoEm: new Date().toISOString()
-    });
-
-    res.json({ success: true, lead: updated });
+    const ref = userLeads(req).doc(req.params.id);
+    const existing = await ref.get();
+    if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    const allowed = ['status', 'motivoPerda', 'proximoContato', 'nota', 'site', 'ramo', 'regiao', 'email', 'telefone', 'phone', 'website', 'notes', 'nextFollowUpDate', 'nextFollowUpNote'];
+    const patch: Record<string, unknown> = {};
+    for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+    patch.atualizadoEm = new Date().toISOString();
+    await ref.set(patch, { merge: true });
+    const updated = await ref.get();
+    res.json({ success: true, lead: { id: updated.id, ...updated.data() } });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao atualizar lead', details: err?.message });
   }
@@ -334,8 +351,11 @@ app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => 
 
 app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    await serverDb.deleteLead(req.params.id);
-    res.json({ success: true, message: 'Lead excluído definitivamente com base na LGPD.' });
+    const ref = userLeads(req).doc(req.params.id);
+    const existing = await ref.get();
+    if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    await ref.delete();
+    res.json({ success: true, message: 'Lead removido da sua lista.' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao excluir lead', details: err?.message });
   }
@@ -727,12 +747,18 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
 setupServer().catch(err => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+
+// Exporta o Express para a função serverless da Vercel.
+export default app;

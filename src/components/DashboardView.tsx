@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sparkles,
-  Download
+  Download,
+  MapPin,
+  Globe
 } from 'lucide-react';
 import { Lead, Task, LeadStatus } from '../types';
 
@@ -74,6 +76,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     .slice(0, 5);
 
   // Leads com Alta Urgência (Score >= 80)
+  const mapQuery = leads[0]?.address || leads[0]?.city || 'Salvador, Bahia, Brasil';
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`;
+  const mapOpenUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+
   const highOpportunityLeads = leads
     .filter((l) => l.opportunityScore >= 80 && l.status !== 'convertido' && l.status !== 'perdido')
     .sort((a, b) => b.opportunityScore - a.opportunityScore)
@@ -160,6 +166,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-2xl font-bold text-amber-400 font-mono-numbers">{tasksToday.length}</div>
           <span className="text-[10px] text-slate-500 mt-1 block">Tarefas prioritárias pendentes</span>
         </div>
+      </div>
+
+      {/* Mapa interativo real do Google Maps + radar comercial */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <section className="xl:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950/40">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] font-bold text-cyan-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> Mapa de prospecção
+              </div>
+              <h3 className="text-sm font-bold text-white mt-1">Explore sua região</h3>
+              <p className="text-xs text-slate-400 mt-1">Mapa interativo real. A região inicial usa o endereço do primeiro lead salvo.</p>
+            </div>
+            <a href={mapOpenUrl} target="_blank" rel="noreferrer" className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-blue-500 hover:text-white transition">
+              <MapPin className="w-3.5 h-3.5 text-cyan-300" /> Abrir Maps <ArrowRight className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="relative h-[300px] sm:h-[360px] bg-slate-950">
+            <iframe
+              title="Mapa interativo do Google Maps para prospecção"
+              src={mapEmbedUrl}
+              className="absolute inset-0 h-full w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-800 text-[11px]">
+            <span className="flex items-center gap-2 text-slate-400"><Globe className="w-3.5 h-3.5 text-cyan-300" /> Região em foco: <strong className="text-slate-200 font-medium">{mapQuery}</strong></span>
+            <button onClick={onNavigateToFinder} className="text-blue-300 hover:text-white font-semibold transition">Pesquisar nesta região ↗</button>
+          </div>
+        </section>
+
+        <section className="xl:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+          <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+          <div className="relative flex items-start justify-between gap-3 mb-5">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.18em] font-bold text-blue-300">Radar LedsNet</div>
+              <h3 className="text-lg font-bold text-white mt-1">Oportunidades no mapa</h3>
+              <p className="text-xs text-slate-400 mt-1">Resumo dos contatos já cadastrados no painel.</p>
+            </div>
+            <div className="w-11 h-11 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 flex items-center justify-center text-cyan-300"><Globe className="w-5 h-5" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><div className="text-[10px] uppercase tracking-wide text-slate-500">Empresas</div><div className="text-2xl font-bold text-white mt-1">{totalLeads}</div></div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><div className="text-[10px] uppercase tracking-wide text-slate-500">Alta oportunidade</div><div className="text-2xl font-bold text-emerald-300 mt-1">{highOpportunityLeads.length}</div></div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs"><span className="font-semibold text-slate-200">Prioridades comerciais</span><span className="text-slate-500">{Math.min(4, highOpportunityLeads.length)} itens</span></div>
+            {highOpportunityLeads.length > 0 ? highOpportunityLeads.slice(0, 4).map((lead) => (
+              <button key={lead.id} onClick={() => onOpenLead(lead)} className="w-full flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/70 hover:border-slate-700 p-3 text-left transition">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-400/20 text-blue-300 flex items-center justify-center shrink-0"><MapPin className="w-4 h-4" /></div>
+                <div className="min-w-0 flex-1"><div className="text-xs font-semibold text-slate-100 truncate">{lead.name}</div><div className="text-[10px] text-slate-500 truncate mt-0.5">{lead.city || lead.address}</div></div>
+                <span className="text-xs font-bold text-emerald-300 font-mono-numbers">{lead.opportunityScore}</span>
+              </button>
+            )) : <div className="rounded-xl border border-dashed border-slate-700 p-4 text-xs text-slate-500">Nenhuma oportunidade prioritária ainda. Faça uma busca para começar a preencher o radar.</div>}
+          </div>
+          <button onClick={onNavigateToFinder} className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white py-3 text-xs font-bold transition"><Search className="w-4 h-4" /> Encontrar empresas na região</button>
+        </section>
       </div>
 
       {/* Grid Principal: Funil Visual + Tarefas do Dia */}
