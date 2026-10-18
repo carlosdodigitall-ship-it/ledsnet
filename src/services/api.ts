@@ -1,14 +1,10 @@
 import { auth } from '../lib/firebase';
-import { getStoredAccessKey } from './storage';
 
 // Firebase ID tokens são obtidos no momento de cada chamada; não são guardados no localStorage.
-async function getHeaders(customKey?: string): Promise<HeadersInit> {
+async function getHeaders(): Promise<HeadersInit> {
   const token = await auth.currentUser?.getIdToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  // Compatibilidade temporária para endpoints legados enquanto a sessão Firebase é adotada.
-  const legacyKey = customKey || getStoredAccessKey();
-  if (!token && legacyKey) headers['x-access-key'] = legacyKey;
   return headers;
 }
 
