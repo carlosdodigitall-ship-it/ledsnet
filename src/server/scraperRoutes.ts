@@ -57,7 +57,7 @@ router.post('/jobs', requireFirebaseUser, async (req: AuthRequest, res: Response
   }
 
   try {
-    const created = await scraperClient.createJob(parsed.data);
+    const created = await scraperClient.createJob({ ...parsed.data, keyword: parsed.data.keyword });
     const externalId = String(created.job_id || created.id || '');
     if (!externalId) {
       return res.status(502).json({ error: 'O scraper não retornou job_id; confira a versão da API instalada.' });
