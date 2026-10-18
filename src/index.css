@@ -1,16 +1,110 @@
 @import "tailwindcss";
 
 @layer base {
+  :root { color-scheme: light; }
+  html { scroll-behavior: smooth; }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #090d16;
-    color: #f1f5f9;
+    background-color: #f5f7fb;
+    color: #172033;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+  button, input, select, textarea { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
 }
 
 .font-mono-numbers {
   font-family: 'JetBrains Mono', monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* LedsNet — painel claro, legível e consistente */
+.app-shell {
+  background: #f5f7fb !important;
+  color: #172033 !important;
+  font-size: 14px;
+}
+.app-shell header {
+  background: rgba(255,255,255,.94) !important;
+  border-color: #e5eaf2 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.app-shell aside {
+  background: #fff !important;
+  border-color: #e5eaf2 !important;
+  box-shadow: 0 8px 28px rgba(15,23,42,.06);
+}
+.app-shell main {
+  min-width: 0;
+  background: #f5f7fb;
+}
+.app-shell main > div {
+  max-width: 1600px;
+}
+.app-shell [class~="bg-slate-950"],
+.app-shell [class~="bg-slate-950/90"],
+.app-shell [class~="bg-slate-900"],
+.app-shell [class~="bg-slate-900/80"],
+.app-shell [class~="bg-slate-900/60"],
+.app-shell [class~="bg-slate-900/40"],
+.app-shell [class~="bg-slate-900/30"],
+.app-shell [class~="bg-slate-800"],
+.app-shell [class~="bg-slate-800/60"] {
+  background-color: #fff !important;
+}
+.app-shell [class~="bg-slate-950/40"],
+.app-shell [class~="bg-slate-900/20"] {
+  background-color: #f8fafc !important;
+}
+.app-shell [class~="text-white"]:not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-rose-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]) {
+  color: #172033 !important;
+}
+.app-shell button[class*="bg-blue-"] [class~="text-white"],
+.app-shell a[class*="bg-blue-"] [class~="text-white"],
+.app-shell button[class*="bg-emerald-"] [class~="text-white"] {
+  color: #fff !important;
+}
+.app-shell [class~="text-slate-100"],
+.app-shell [class~="text-slate-200"],
+.app-shell [class~="text-slate-300"] {
+  color: #334155 !important;
+}
+.app-shell [class~="text-slate-400"] { color: #64748b !important; }
+.app-shell [class~="text-slate-500"] { color: #64748b !important; }
+.app-shell [class~="text-slate-600"] { color: #94a3b8 !important; }
+.app-shell [class~="border-slate-800"],
+.app-shell [class~="border-slate-800/80"],
+.app-shell [class~="border-slate-800/60"],
+.app-shell [class~="border-slate-800/50"],
+.app-shell [class~="border-slate-700"] {
+  border-color: #e2e8f0 !important;
+}
+.app-shell input:not([type="checkbox"]),
+.app-shell select,
+.app-shell textarea {
+  color: #172033;
+}
+.app-shell input::placeholder,
+.app-shell textarea::placeholder { color: #94a3b8 !important; }
+.app-shell button { transition-duration: 160ms; }
+.app-shell button:focus-visible,
+.app-shell a:focus-visible,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible {
+  outline: 3px solid rgba(37,99,235,.22);
+  outline-offset: 2px;
+}
+.app-shell [class~="text-[10px]"] { font-size: 11px !important; }
+.app-shell [class~="text-[11px]"] { font-size: 12px !important; }
+.app-shell [class~="text-xs"] { font-size: 13px !important; }
+@media (min-width: 1024px) {
+  .app-shell main > div { padding-left: 2rem; padding-right: 2rem; }
+}
+@media (max-width: 640px) {
+  .app-shell header { padding-left: 12px; padding-right: 12px; }
+  .app-shell main > div { padding-left: 14px; padding-right: 14px; }
+  .app-shell [class~="text-[10px]"] { font-size: 11px !important; }
 }
