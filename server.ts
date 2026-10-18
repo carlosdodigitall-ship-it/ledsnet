@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { serverDb } from './src/server/db.js';
+import scraperRouter from './src/server/scraperRoutes.js';
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Configuração de Chave de Acesso Privada
-const ACCESS_KEY = process.env.ACCESS_KEY || 'LEDS-PRO-2026';
+const ACCESS_KEY = process.env.ACCESS_KEY || '';
 
 // Configurações da Evolution API
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
@@ -38,7 +39,8 @@ if (apiKey) {
   });
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use('/api/scraper', scraperRouter);
 
 // ============================================================================
 // 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
@@ -727,12 +729,18 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
 setupServer().catch(err => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+
+// Exporta o Express para a função serverless da Vercel.
+export default app;
