@@ -3,15 +3,6 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { api } from './services/api';
 import {
-  setStoredAccessKey,
-  clearStoredAccessKey,
-  saveLeads,
-  loadTasks,
-  saveTasks,
-  loadInteractions,
-  saveInteractions,
-  loadTemplates,
-  saveTemplates,
   exportLeadsToCSV,
 } from './services/storage';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
@@ -60,40 +51,46 @@ export default function App() {
         return;
       }
       setLeads([]);
-      api.getLeads()
-        .then((remoteLeads: Lead[]) => {
-          setLeads(remoteLeads);
-          saveLeads(remoteLeads);
+      Promise.all([api.getLeads(), api.getTasks(), api.getInteractions(), api.getTemplates()])
+        .then(([remoteLeads, remoteTasks, remoteInteractions, remoteTemplates]) => {
+          setLeads(remoteLeads as Lead[]);
+          setTasks(remoteTasks as Task[]);
+          setInteractions(remoteInteractions as Interaction[]);
+          setTemplates(remoteTemplates as MessageTemplate[]);
         })
         .catch((error) => {
-          console.error('Falha ao sincronizar leads com Firestore:', error);
+          console.error('Falha ao carregar dados do Firebase:', error);
         });
     });
-    setTasks(loadTasks());
-    setInteractions(loadInteractions());
-    setTemplates(loadTemplates());
     return unsubscribe;
   }, []);
 
-  // Sincronização automática com localStorage
+  // Dados de negócio persistidos no Cloud Firestore por usuário
   const updateLeads = (newLeads: Lead[]) => {
     setLeads(newLeads);
-    saveLeads(newLeads);
   };
 
   const updateTasks = (newTasks: Task[]) => {
     setTasks(newTasks);
-    saveTasks(newTasks);
+    api.replaceTasks(newTasks).catch((error) => {
+      console.error('Falha ao persistir tarefas no Firestore:', error);
+      alert('Não foi possível salvar as tarefas no Firebase. Confira a conexão e tente novamente.');
+    });
   };
 
   const updateInteractions = (newInteractions: Interaction[]) => {
     setInteractions(newInteractions);
-    saveInteractions(newInteractions);
+    api.replaceInteractions(newInteractions).catch((error) => {
+      console.error('Falha ao persistir interações no Firestore:', error);
+    });
   };
 
   const updateTemplates = (newTemplates: MessageTemplate[]) => {
     setTemplates(newTemplates);
-    saveTemplates(newTemplates);
+    api.replaceTemplates(newTemplates).catch((error) => {
+      console.error('Falha ao persistir modelos no Firestore:', error);
+      alert('Não foi possível salvar os modelos no Firebase.');
+    });
   };
 
   // Autenticação real por Firebase Authentication.
@@ -103,16 +100,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    clearStoredAccessKey();
     await signOut(auth);
     setAccessKey('');
     setIsUnlocked(false);
   };
 
-  const handleUpdateKey = (newKey: string) => {
-    setStoredAccessKey(newKey);
-    setAccessKey(newKey);
-  };
+
 
   // Ações de Leads
   const handleAddLeadToFunnel = async (lead: Lead) => {
@@ -401,13 +394,43 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         accessKey={accessKey}
-        onUpdateKey={handleUpdateKey}
         onLogout={handleLogout}
         onExportCSV={() => exportLeadsToCSV(leads)}
         leads={leads}
-        onImportBackup={(imported) => {
-          updateLeads(imported);
-          alert('Leads restaurados com sucesso!');
+        onImportBackup={async (imported) => {
+          let saved = 0;
+          let skipped = 0;
+          try {
+            for (const lead of imported) {
+              try {
+                await api.createLead({
+                  ...lead,
+                  nome: lead.name || lead.nome,
+                  name: lead.name || lead.nome,
+                  place_id: lead.placeId || lead.place_id || '',
+                  telefone: lead.phone || lead.telefone || '',
+                  phone: lead.phone || lead.telefone || '',
+                  endereco: lead.address || lead.endereco || '',
+                  site: lead.website || lead.site || null,
+                  website: lead.website || lead.site || null,
+                  ramo: lead.segment || lead.ramo || '',
+                  regiao: lead.city || lead.regiao || '',
+                  score: lead.opportunityScore || lead.score || 0,
+                });
+                saved += 1;
+              } catch (error: any) {
+                if (String(error?.message || '').toLowerCase().includes('já está salva')) {
+                  skipped += 1;
+                  continue;
+                }
+                throw error;
+              }
+            }
+            setLeads(await api.getLeads() as Lead[]);
+            alert(`Importação para Firebase concluída: ${saved} leads salvos, ${skipped} duplicados ignorados.`);
+          } catch (error: any) {
+            alert(error?.message || 'Falha ao importar o backup para o Firebase.');
+          }
         }}
         templates={templates}
         onUpdateTemplates={updateTemplates}

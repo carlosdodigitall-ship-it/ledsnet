@@ -80,15 +80,19 @@ jobs:
             $EMAIL_FLAG \
             -exit-on-inactivity 3m
 
-      - name: Save verified results to Supabase
+      - name: Install Firebase Admin SDK
+        run: python3 -m pip install --user firebase-admin
+
+      - name: Save verified results to Cloud Firestore
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIRESTORE_DATABASE_ID: ${{ vars.FIRESTORE_DATABASE_ID }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           FIREBASE_UID: ${{ inputs.firebase_uid }}
           SEARCH_QUERY: ${{ inputs.query }}
         run: |
-          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
-            echo "Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nos GitHub Actions Secrets."; exit 1
+          if [[ -z "$FIREBASE_PROJECT_ID" || -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]]; then
+            echo "Configure FIREBASE_PROJECT_ID em Actions Variables e FIREBASE_SERVICE_ACCOUNT_KEY em Actions Secrets."; exit 1
           fi
           python3 scripts/import_scraper_results.py scraper-output/results.json
 

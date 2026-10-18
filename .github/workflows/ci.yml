@@ -28,6 +28,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Python scraper-import tests
         run: python3 -m unittest discover -s tests -v
+      - name: Python syntax validation
+        run: python3 -m compileall -q scripts tests
       - name: TypeScript validation
         run: npm run lint
       - name: Production build

@@ -3,10 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getAuth } from 'firebase-admin/auth';
-import { getApps } from 'firebase-admin/app';
-import { serverDb, getServerFirestore } from './src/server/db.js';
+import { getServerFirestore, getServerFirebaseApp } from './src/server/db.js';
 import scraperRouter from './src/server/scraperRoutes.js';
-import { isSupabaseLeadsConfigured, listSupabaseLeads, getSupabaseLeadById, createSupabaseLead, updateSupabaseLead, deleteSupabaseLead } from './src/server/supabaseLeads.js';
 
 dotenv.config();
 
@@ -15,9 +13,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-
-// Configuração de Chave de Acesso Privada
-const ACCESS_KEY = process.env.ACCESS_KEY || '';
 
 // Configurações da Evolution API
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
@@ -40,8 +35,7 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Sessão Firebase ausente. Entre novamente na plataforma.' });
   }
   try {
-    const app = getApps()[0];
-    if (!app) return res.status(503).json({ error: 'Firebase Admin não está inicializado.' });
+    const app = getServerFirebaseApp();
     const decoded = await getAuth(app).verifyIdToken(token);
     (req as Request & { firebaseUid?: string }).firebaseUid = decoded.uid;
     return next();
@@ -49,20 +43,6 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Sessão Firebase inválida ou expirada. Entre novamente.' });
   }
 }
-
-// Endpoint para validação da chave de acesso no login do painel
-app.post('/api/auth/validate-key', (req: Request, res: Response) => {
-  const { key } = req.body;
-  if (!key) {
-    return res.status(400).json({ valid: false, error: 'Chave não informada.' });
-  }
-
-  if (key === ACCESS_KEY) {
-    return res.json({ valid: true, message: 'Chave de acesso autenticada com sucesso.' });
-  }
-
-  return res.status(401).json({ valid: false, error: 'Chave de acesso incorreta.' });
-});
 
 // Endpoint de saúde
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -83,7 +63,7 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
   const { segment = 'Climatização e Refrigeração', location = 'Salvador, BA', radiusKm = 15 } = req.body;
 
   try {
-    const config = await serverDb.getConfig();
+    const config = await readUserConfig(req);
     const pesoSemSite = config?.pesoSemSite ?? 40;
     const pesoBaixaNota = config?.pesoBaixaNota ?? 25;
     const pesoPoucasAvaliacoes = config?.pesoPoucasAvaliacoes ?? 15;
@@ -127,19 +107,16 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
     }
 
     // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
-    const userId = (req as FirebaseRequest).firebaseUid!;
-    const existingSupabaseLeads = isSupabaseLeadsConfigured()
-      ? await listSupabaseLeads(userId)
-      : null;
     const processedLeads = [];
     for (let i = 0; i < rawPlaces.length; i++) {
       const p = rawPlaces[i];
       const placeId = p.placeId || `place_${Date.now()}_${i}`;
 
       // Verifica duplicados no armazenamento ativo, sempre dentro do usuário autenticado.
-      const existingLead = existingSupabaseLeads
-        ? existingSupabaseLeads.find((lead: any) => lead.place_id === placeId)
-        : await serverDb.findLeadByPlaceId(placeId);
+      const duplicateSnapshot = await userLeads(req).where('place_id', '==', placeId).limit(1).get();
+      const existingLead = duplicateSnapshot.empty
+        ? null
+        : { id: duplicateSnapshot.docs[0].id, ...duplicateSnapshot.docs[0].data() } as any;
       const isDuplicate = !!existingLead;
 
       // Normaliza somente dados existentes; nunca inventa telefone, nota ou avaliações.
@@ -214,20 +191,43 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
  // 3. GESTÃO DE LEADS (Firestore isolado por usuário autenticado)
  // ============================================================================
 type FirebaseRequest = Request & { firebaseUid?: string };
-function userLeads(req: Request) {
+function userDoc(req: Request) {
   const uid = (req as FirebaseRequest).firebaseUid;
   if (!uid) throw new Error('Sessão Firebase ausente.');
-  return getServerFirestore().collection('users').doc(uid).collection('leads');
+  return getServerFirestore().collection('users').doc(uid);
+}
+function userLeads(req: Request) { return userDoc(req).collection('leads'); }
+function userCollection(req: Request, name: string) { return userDoc(req).collection(name); }
+function userConfig(req: Request) { return userDoc(req).collection('settings').doc('config'); }
+async function readUserConfig(req: Request) {
+  const snap = await userConfig(req).get();
+  return snap.exists ? snap.data() || {} : {
+    pesoSemSite: 40, pesoBaixaNota: 25, pesoPoucasAvaliacoes: 15,
+    limiteDiarioEnvios: 50, intervaloMinimoSegundos: 15, intervaloMaximoSegundos: 60,
+    instanciaEvolution: EVOLUTION_INSTANCE
+  };
+}
+async function userTodaySendCount(req: Request) {
+  const today = new Date().toISOString().slice(0, 10);
+  const snap = await userCollection(req, 'send_logs').where('status', '==', 'sucesso').get();
+  return snap.docs.filter(doc => String(doc.data().criadoEm || '').startsWith(today)).length;
+}
+async function addUserInteraction(req: Request, leadId: string, tipo: string, conteudo: string) {
+  const id = `int_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const item = { id, leadId, tipo, conteudo, criadoEm: new Date().toISOString() };
+  await userCollection(req, 'interactions').doc(id).set(item);
+  return item;
+}
+async function addUserSendLog(req: Request, leadId: string, status: 'sucesso' | 'erro', erro?: string | null) {
+  const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const item = { id, leadId, status, erro: erro || null, criadoEm: new Date().toISOString() };
+  await userCollection(req, 'send_logs').doc(id).set(item);
+  return item;
 }
 
 app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
     const { status, ramo, regiao, search } = req.query as any;
-    const uid = (req as FirebaseRequest).firebaseUid!;
-    if (isSupabaseLeadsConfigured()) {
-      const leads = await listSupabaseLeads(uid, { status, ramo, regiao, search });
-      return res.json({ success: true, count: leads.length, leads });
-    }
     const snapshot = await userLeads(req).get();
     let leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if (status && status !== 'todos') leads = leads.filter((lead: any) => lead.status === status);
@@ -242,12 +242,6 @@ app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.get('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const uid = (req as FirebaseRequest).firebaseUid!;
-    if (isSupabaseLeadsConfigured()) {
-      const lead = await getSupabaseLeadById(uid, req.params.id);
-      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
-      return res.json({ success: true, lead, interacoes: [] });
-    }
     const doc = await userLeads(req).doc(req.params.id).get();
     if (!doc.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
     res.json({ success: true, lead: { id: doc.id, ...doc.data() }, interacoes: [] });
@@ -263,18 +257,6 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
     const telefone = String(data.telefone || data.phone || '').trim();
     const email = String(data.email || '').trim();
     if (!nome) return res.status(400).json({ error: 'Nome da empresa é obrigatório.' });
-    const uid = (req as FirebaseRequest).firebaseUid!;
-    if (isSupabaseLeadsConfigured()) {
-      try {
-        const lead = await createSupabaseLead(uid, data);
-        return res.status(201).json({ success: true, lead });
-      } catch (error: any) {
-        if (String(error?.message || '').includes('HTTP 409')) {
-          return res.status(409).json({ error: 'Esta empresa já está salva na sua lista.' });
-        }
-        throw error;
-      }
-    }
     const collection = userLeads(req);
     if (data.place_id || data.placeId) {
       const placeId = String(data.place_id || data.placeId);
@@ -303,15 +285,7 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const uid = (req as FirebaseRequest).firebaseUid!;
     const allowed = ['status', 'motivoPerda', 'proximoContato', 'nota', 'site', 'ramo', 'regiao', 'email', 'emails', 'telefone', 'phone', 'website', 'notes', 'nextFollowUpDate', 'nextFollowUpNote', 'score', 'address', 'endereco'];
-    if (isSupabaseLeadsConfigured()) {
-      const patch: Record<string, unknown> = {};
-      for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
-      const updated = await updateSupabaseLead(uid, req.params.id, patch);
-      if (!updated) return res.status(404).json({ error: 'Lead não encontrado.' });
-      return res.json({ success: true, lead: updated });
-    }
     const ref = userLeads(req).doc(req.params.id);
     const existing = await ref.get();
     if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
@@ -328,13 +302,6 @@ app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => 
 
 app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const uid = (req as FirebaseRequest).firebaseUid!;
-    if (isSupabaseLeadsConfigured()) {
-      const lead = await getSupabaseLeadById(uid, req.params.id);
-      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
-      await deleteSupabaseLead(uid, req.params.id);
-      return res.json({ success: true, message: 'Lead removido da sua lista.' });
-    }
     const ref = userLeads(req).doc(req.params.id);
     const existing = await ref.get();
     if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
@@ -349,43 +316,18 @@ app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) =>
 app.post('/api/leads/public/capture', async (req: Request, res: Response) => {
   try {
     const { nome, telefone, ramo, regiao, mensagem, consentimentoLgpd } = req.body;
-
-    if (!consentimentoLgpd) {
-      return res.status(400).json({ error: 'Consentimento da LGPD é obrigatório.' });
-    }
-    if (!nome || !telefone) {
-      return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
-    }
-
-    let cleanDigits = telefone.replace(/\D/g, '');
-    if (cleanDigits.length === 10 || cleanDigits.length === 11) {
-      cleanDigits = '55' + cleanDigits;
-    }
-
-    const newLead = await serverDb.saveLead({
-      nome,
-      telefone: cleanDigits,
-      endereco: regiao || 'Via formulário público',
-      place_id: `form_${Date.now()}`,
-      nota: 5.0,
-      numeroAvaliacoes: 1,
-      site: null,
-      ramo: ramo || 'Interesse Comercial',
-      regiao: regiao || 'Brasil',
-      score: 85,
-      status: 'novo',
-      origem: 'formulario',
-      motivoPerda: null,
-      proximoContato: null
+    if (!consentimentoLgpd) return res.status(400).json({ error: 'Consentimento da LGPD é obrigatório.' });
+    if (!nome || !telefone) return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios.' });
+    const cleanDigits = String(telefone).replace(/\D/g, '');
+    const ref = getServerFirestore().collection('public_captures').doc();
+    await ref.set({
+      nome: String(nome).trim(), telefone: cleanDigits, ramo: ramo || null, regiao: regiao || null,
+      mensagem: mensagem || null, consentimentoLgpd: true, origem: 'formulario',
+      criadoEm: new Date().toISOString(), status: 'novo'
     });
-
-    if (mensagem) {
-      await serverDb.addInteraction(newLead.id, 'anotacao', `Mensagem do formulário de captura: ${mensagem}`);
-    }
-
-    res.status(201).json({ success: true, message: 'Lead capturado com sucesso.', leadId: newLead.id });
+    return res.status(201).json({ success: true, message: 'Contato recebido com sucesso.', captureId: ref.id });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao processar captura', details: err?.message });
+    return res.status(500).json({ error: 'Erro ao processar captura', details: err?.message });
   }
 });
 
@@ -436,7 +378,8 @@ app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) 
       return res.status(400).json({ error: 'leadId e texto da mensagem são obrigatórios.' });
     }
 
-    const lead = await serverDb.getLeadById(leadId);
+    const leadDoc = await userLeads(req).doc(String(leadId)).get();
+    const lead = leadDoc.exists ? { id: leadDoc.id, ...leadDoc.data() } as any : null;
     if (!lead) {
       return res.status(404).json({ error: 'Lead não encontrado.' });
     }
@@ -448,9 +391,9 @@ app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) 
       });
     }
 
-    const config = await serverDb.getConfig();
+    const config = await readUserConfig(req);
     const limiteDiario = config?.limiteDiarioEnvios ?? 50;
-    const todayCount = await serverDb.getTodaySendCount();
+    const todayCount = await userTodaySendCount(req);
 
     if (todayCount >= limiteDiario) {
       return res.status(429).json({
@@ -499,15 +442,15 @@ app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) 
     }
 
     // Registra em logs_envio
-    await serverDb.addSendLog(leadId, sendSuccess ? 'sucesso' : 'erro', errorMessage);
+    await addUserSendLog(req, String(leadId), sendSuccess ? 'sucesso' : 'erro', errorMessage);
 
     if (sendSuccess) {
       // Registra interação no histórico
-      await serverDb.addInteraction(leadId, 'mensagem_enviada', texto);
+      await addUserInteraction(req, String(leadId), 'mensagem_enviada', texto);
 
       // Atualiza status para 'contatado' se era 'novo'
       if (lead.status === 'novo') {
-        await serverDb.updateLeadStatus(leadId, 'contatado');
+        await userLeads(req).doc(String(leadId)).set({ status: 'contatado', atualizadoEm: new Date().toISOString() }, { merge: true });
       }
 
       return res.json({
@@ -534,45 +477,38 @@ app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) 
 app.post('/api/whatsapp/webhook', async (req: Request, res: Response) => {
   try {
     const payload = req.body;
-    console.log('[Webhook Evolution] Evento recebido:', payload?.event || 'mensagem');
-
-    // Extrai mensagem e remetente (compatível com os formatos padrão da Evolution API)
     const data = payload?.data;
     const remoteJid = data?.key?.remoteJid || data?.sender;
-    const messageContent = data?.message?.conversation || 
-                           data?.message?.extendedTextMessage?.text || 
-                           payload?.text || '';
-
-    if (!remoteJid || !messageContent) {
-      return res.json({ status: 'ignored', reason: 'Payload sem texto ou remetente.' });
-    }
-
-    // Limpa telefone no formato E.164
-    const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '');
-    const lead = await serverDb.findLeadByPhone(phone);
-
-    if (!lead) {
-      console.log(`[Webhook Evolution] Lead com telefone ${phone} não localizado.`);
-      return res.json({ status: 'lead_not_found', phone });
-    }
-
-    const trimmedMsg = messageContent.trim();
+    const messageContent = data?.message?.conversation || data?.message?.extendedTextMessage?.text || payload?.text || '';
+    if (!remoteJid || !messageContent) return res.json({ status: 'ignored', reason: 'Payload sem texto ou remetente.' });
+    const phone = String(remoteJid).replace('@s.whatsapp.net', '').replace(/\D/g, '');
+    const matches = await getServerFirestore().collectionGroup('leads').where('telefone', '==', phone).limit(1).get();
+    if (matches.empty) return res.json({ status: 'lead_not_found', phone });
+    const leadDoc = matches.docs[0];
+    const uid = leadDoc.ref.parent.parent?.id;
+    if (!uid) return res.status(500).json({ error: 'Não foi possível identificar o proprietário do lead.' });
+    const lead = { id: leadDoc.id, ...leadDoc.data() } as any;
+    const trimmedMsg = String(messageContent).trim();
     const isOptOut = trimmedMsg.toUpperCase() === 'SAIR';
-
+    await leadDoc.ref.set({
+      status: isOptOut ? 'nao_contatar' : (['qualificado', 'convertido', 'nao_contatar'].includes(lead.status) ? lead.status : 'respondeu'),
+      ...(isOptOut ? { motivoPerda: 'Solicitou opt-out via WhatsApp (comando SAIR)' } : {}),
+      atualizadoEm: new Date().toISOString()
+    }, { merge: true });
+    const userRef = getServerFirestore().collection('users').doc(uid);
+    const interactionId = `int_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    await userRef.collection('interactions').doc(interactionId).set({
+      id: interactionId, leadId: lead.id, tipo: 'resposta',
+      conteudo: isOptOut ? `[OPT-OUT] ${trimmedMsg}` : trimmedMsg, criadoEm: new Date().toISOString()
+    });
     if (isOptOut) {
-      // Se a resposta for "SAIR", muda para nao_contatar e bloqueia envios futuros
-      await serverDb.updateLeadStatus(lead.id, 'nao_contatar', 'Solicitou opt-out via WhatsApp (comando SAIR)');
-      await serverDb.addInteraction(lead.id, 'resposta', `[OPT-OUT] ${trimmedMsg}`);
-      await serverDb.addInteraction(lead.id, 'anotacao', 'Cliente solicitou formalmente a remoção de contatos. Status alterado para Não Contatar.');
-      console.log(`[LGPD Opt-Out] Lead ${lead.nome} (${phone}) marcou SAIR. Bloqueado.`);
-    } else {
-      // Salva em interações e muda status para 'respondeu'
-      await serverDb.addInteraction(lead.id, 'resposta', trimmedMsg);
-      if (lead.status !== 'qualificado' && lead.status !== 'convertido' && lead.status !== 'nao_contatar') {
-        await serverDb.updateLeadStatus(lead.id, 'respondeu');
-      }
+      const noteId = `int_${Date.now()}_optout`;
+      await userRef.collection('interactions').doc(noteId).set({
+        id: noteId, leadId: lead.id, tipo: 'anotacao',
+        conteudo: 'Cliente solicitou formalmente a remoção de contatos. Status alterado para Não Contatar.',
+        criadoEm: new Date().toISOString()
+      });
     }
-
     return res.json({ status: 'processed', leadId: lead.id, isOptOut });
   } catch (err: any) {
     console.error('Erro no webhook Evolution:', err);
@@ -581,40 +517,128 @@ app.post('/api/whatsapp/webhook', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// 5. CONFIGURAÇÕES & MODELOS DE MENSAGEM
+// 5. CONFIGURAÇÕES & MODELOS DE MENSAGEM (escopo do usuário Firebase)
 // ============================================================================
-app.get('/api/config', requireAuth, async (_req: Request, res: Response) => {
-  const config = await serverDb.getConfig();
-  const todayCount = await serverDb.getTodaySendCount();
-  res.json({ success: true, config, todayCount });
+app.get('/api/config', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const config = await readUserConfig(req);
+    const todayCount = await userTodaySendCount(req);
+    res.json({ success: true, config, todayCount });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar configurações', details: err?.message }); }
 });
 
 app.patch('/api/config', requireAuth, async (req: Request, res: Response) => {
-  const updated = await serverDb.updateConfig(req.body);
-  res.json({ success: true, config: updated });
+  try {
+    const current = await readUserConfig(req);
+    const allowed = ['pesoSemSite', 'pesoBaixaNota', 'pesoPoucasAvaliacoes', 'limiteDiarioEnvios', 'intervaloMinimoSegundos', 'intervaloMaximoSegundos', 'instanciaEvolution'];
+    const patch: Record<string, unknown> = {};
+    for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+    const updated = { ...current, ...patch, atualizadoEm: new Date().toISOString() };
+    await userConfig(req).set(updated, { merge: true });
+    res.json({ success: true, config: updated });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao salvar configurações', details: err?.message }); }
 });
 
-app.get('/api/templates', requireAuth, async (_req: Request, res: Response) => {
-  const templates = await serverDb.getMessageTemplates();
-  res.json({ success: true, templates });
+app.get('/api/templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const snap = await userCollection(req, 'templates').get();
+    const templates = snap.empty ? [
+      { id: 'tpl-1', title: 'Oportunidade Comercial Direta', text: 'Olá, {nome}! Notei que sua empresa em {bairro} tem grande potencial de novos clientes e gostaria de apresentar uma solução para aumentar seus atendimentos.' },
+      { id: 'tpl-2', title: 'Presença Online e Site', text: 'Olá, equipe da {empresa}! Vi que muitos clientes procuram seus serviços em {bairro}. Tenho uma proposta para captar mais contatos.' },
+      { id: 'tpl-3', title: 'Parceria e Serviços B2B', text: 'Olá, tudo bem? Gostaria de conversar sobre uma parceria comercial na região de {bairro}. Podemos agendar 5 minutos esta semana?' }
+    ] : snap.docs.map(doc => {
+      const data = doc.data();
+      return { ...data, id: doc.id, title: data.title || data.titulo || '', text: data.text || data.texto || '' };
+    });
+    res.json({ success: true, templates });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar modelos', details: err?.message }); }
 });
 
 app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
-  const { titulo, texto, id } = req.body;
-  if (!titulo || !texto) {
-    return res.status(400).json({ error: 'Título e texto são obrigatórios.' });
+  try {
+    const { titulo, texto, id } = req.body || {};
+    if (!titulo || !texto) return res.status(400).json({ error: 'Título e texto são obrigatórios.' });
+    const templateId = typeof id === 'string' && id.length < 120 ? id : `tpl_${Date.now()}`;
+    const template = { id: templateId, titulo: String(titulo).trim(), texto: String(texto), atualizadoEm: new Date().toISOString() };
+    await userCollection(req, 'templates').doc(templateId).set(template, { merge: true });
+    res.json({ success: true, template });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao salvar modelo', details: err?.message }); }
+});
+
+async function replaceUserCollection(req: Request, name: string, items: unknown[]) {
+  if (!Array.isArray(items) || items.length > 400) {
+    throw new Error('Envie uma lista válida com no máximo 400 registros por operação.');
   }
-  const saved = await serverDb.saveMessageTemplate({ id, titulo, texto });
-  res.json({ success: true, template: saved });
+  const collection = userCollection(req, name);
+  const existing = await collection.get();
+  for (const doc of existing.docs) await doc.ref.delete();
+  for (let offset = 0; offset < items.length; offset += 400) {
+    const batch = getServerFirestore().batch();
+    for (const raw of items.slice(offset, offset + 400)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const item = raw as Record<string, unknown>;
+      const id = typeof item.id === 'string' && item.id.length > 0 && item.id.length < 120 && !item.id.includes('/')
+        ? item.id
+        : getServerFirestore().collection('_id_generation').doc().id;
+      batch.set(collection.doc(id), { ...item, id, atualizadoEm: new Date().toISOString() }, { merge: true });
+    }
+    await batch.commit();
+  }
+}
+
+app.get('/api/tasks', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await userCollection(req, 'tasks').get();
+    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ success: true, tasks });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar tarefas', details: err?.message }); }
+});
+
+app.put('/api/tasks', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'tasks', req.body?.tasks);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar tarefas', details: err?.message }); }
+});
+
+app.get('/api/interactions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await userCollection(req, 'interactions').get();
+    const interactions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const legacyType: Record<string, string> = { mensagem_enviada: 'whatsapp', resposta: 'note', anotacao: 'note' };
+      return {
+        ...data,
+        id: doc.id,
+        type: data.type || legacyType[data.tipo] || 'note',
+        content: data.content || data.conteudo || '',
+        timestamp: data.timestamp || data.criadoEm || new Date().toISOString(),
+      };
+    });
+    interactions.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    res.json({ success: true, interactions });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar interações', details: err?.message }); }
+});
+
+app.put('/api/interactions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'interactions', req.body?.interactions);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar interações', details: err?.message }); }
+});
+
+app.put('/api/templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'templates', req.body?.templates);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar modelos', details: err?.message }); }
 });
 
 // KPIs do Dashboard
 app.get('/api/stats', requireAuth, async (req: Request, res: Response) => {
   try {
-    const uid = (req as FirebaseRequest).firebaseUid!;
-    const leads = isSupabaseLeadsConfigured()
-      ? await listSupabaseLeads(uid)
-      : await serverDb.getLeads();
+    const snapshot = await userLeads(req).get();
+    const leads: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const today = new Date().toISOString().split('T')[0];
 
     const totalLeads = leads.length;

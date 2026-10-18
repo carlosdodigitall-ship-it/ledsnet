@@ -15,20 +15,6 @@ async function readJson(response: Response) {
 }
 
 export const api = {
-  async validateKey(key: string): Promise<{ valid: boolean; error?: string }> {
-    try {
-      const res = await fetch('/api/auth/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-      });
-      const data = await res.json();
-      return { valid: res.ok && data.valid, error: data.error };
-    } catch (err: any) {
-      return { valid: false, error: err?.message || 'Falha de conexão com o servidor.' };
-    }
-  },
-
   async getLeads(filters?: { status?: string; ramo?: string; regiao?: string; search?: string }) {
     const params = new URLSearchParams();
     if (filters?.status && filters.status !== 'todos') params.append('status', filters.status);
@@ -84,6 +70,28 @@ export const api = {
     return readJson(await fetch('/api/whatsapp/send', {
       method: 'POST', headers: await getHeaders(), body: JSON.stringify({ leadId, texto, delaySeconds }),
     }));
+  },
+
+  async getTasks() {
+    const data = await readJson(await fetch('/api/tasks', { headers: await getHeaders() }));
+    return data.tasks || [];
+  },
+
+  async replaceTasks(tasks: unknown[]) {
+    return readJson(await fetch('/api/tasks', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ tasks }) }));
+  },
+
+  async getInteractions() {
+    const data = await readJson(await fetch('/api/interactions', { headers: await getHeaders() }));
+    return data.interactions || [];
+  },
+
+  async replaceInteractions(interactions: unknown[]) {
+    return readJson(await fetch('/api/interactions', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ interactions }) }));
+  },
+
+  async replaceTemplates(templates: unknown[]) {
+    return readJson(await fetch('/api/templates', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ templates }) }));
   },
 
   async getStats() {
