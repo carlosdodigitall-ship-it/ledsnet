@@ -17,6 +17,7 @@ type LeadRow = {
   score: number;
   notes: string | null;
   next_follow_up_date: string | null;
+  next_follow_up_note: string | null;
   motivo_perda: string | null;
   source: string;
   raw_data: Record<string, unknown> | null;
@@ -90,6 +91,7 @@ function mapRow(row: LeadRow) {
     status: row.status || 'novo',
     notes: row.notes || '',
     nextFollowUpDate: row.next_follow_up_date,
+    nextFollowUpNote: row.next_follow_up_note,
     motivoPerda: row.motivo_perda,
     origem: row.source,
     source: row.source,
@@ -159,6 +161,7 @@ export async function createSupabaseLead(userId: string, data: Record<string, an
     score: Math.min(100, Math.max(0, Number(data.score) || 0)),
     notes: data.notes || null,
     next_follow_up_date: data.nextFollowUpDate || data.proximoContato || null,
+    next_follow_up_note: data.nextFollowUpNote || null,
     motivo_perda: data.motivoPerda || null,
     source: data.origem || data.source || 'manual',
     raw_data: data.raw_data || data,
@@ -179,6 +182,7 @@ export async function updateSupabaseLead(userId: string, id: string, patch: Reco
     motivoPerda: 'motivo_perda',
     nextFollowUpDate: 'next_follow_up_date',
     proximoContato: 'next_follow_up_date',
+    nextFollowUpNote: 'next_follow_up_note',
     nota: 'rating',
     rating: 'rating',
     site: 'website',
