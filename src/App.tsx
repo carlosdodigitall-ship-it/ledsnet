@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './lib/firebase';
 import {
-  getStoredAccessKey,
   setStoredAccessKey,
   clearStoredAccessKey,
   loadLeads,
@@ -12,7 +13,6 @@ import {
   loadTemplates,
   saveTemplates,
   exportLeadsToCSV,
-  DEFAULT_ACCESS_KEY,
 } from './services/storage';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
 import { Header } from './components/Header';
@@ -50,23 +50,17 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isManualLeadOpen, setIsManualLeadOpen] = useState(false);
 
-  // Inicialização
+  // Inicialização com sessão persistente do Firebase Authentication.
   useEffect(() => {
-    const key = getStoredAccessKey();
-    if (key) {
-      setAccessKey(key);
-      setIsUnlocked(true);
-    } else {
-      // Se não houver chave armazenada, abre com a demo pré-configurada
-      setAccessKey(DEFAULT_ACCESS_KEY);
-      setIsUnlocked(true);
-      setStoredAccessKey(DEFAULT_ACCESS_KEY);
-    }
-
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAccessKey(user?.email || '');
+      setIsUnlocked(!!user);
+    });
     setLeads(loadLeads());
     setTasks(loadTasks());
     setInteractions(loadInteractions());
     setTemplates(loadTemplates());
+    return unsubscribe;
   }, []);
 
   // Sincronização automática com localStorage
@@ -90,15 +84,15 @@ export default function App() {
     saveTemplates(newTemplates);
   };
 
-  // Autenticação por chave
-  const handleUnlock = (key: string) => {
-    setStoredAccessKey(key);
-    setAccessKey(key);
+  // Autenticação real por Firebase Authentication.
+  const handleUnlock = () => {
     setIsUnlocked(true);
+    setAccessKey(auth.currentUser?.email || '');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     clearStoredAccessKey();
+    await signOut(auth);
     setAccessKey('');
     setIsUnlocked(false);
   };
