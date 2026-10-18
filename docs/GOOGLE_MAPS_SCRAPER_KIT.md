@@ -71,3 +71,17 @@ O deploy estático atual de Vite, por si só, não comprova que as rotas Express
 
 Os nomes devem coincidir com o código e o ambiente efetivamente implantado. Nunca commitar valores secretos nem colocá-los em `VITE_*`.
 
+## Atualização operacional — 18/10/2026
+
+- O workflow `LedsNet CI` run #49 terminou com sucesso: testes Python, TypeScript e build de produção passaram.
+- A função catch-all `api/[...path].ts` já existe e exporta o Express do `server.ts`; `vercel.json` mantém o build Vite e a pasta `dist`. Isso valida a configuração de entrada no repositório, mas não substitui um teste HTTP em um deploy atualizado.
+- A Vercel recusou novo deploy pela API com `402 payment_required`: limite gratuito de mais de 100 chamadas de deployment por dia, solicitar nova tentativa após 24 horas. Os checks Git anteriores também sinalizaram `build-rate-limit`. Não alterar plano/faturamento automaticamente.
+- Nos projetos Vercel `ledsnet` e `ledsnet-l7hs`, a listagem de variáveis retornou `FIREBASE_PROJECT_ID`, `FIRESTORE_DATABASE_ID` e `SUPABASE_URL`; não retornou `FIREBASE_SERVICE_ACCOUNT_KEY` nem `SUPABASE_SERVICE_ROLE_KEY`. As credenciais privadas precisam ser adicionadas manualmente por alguém autorizado.
+
+### Ações manuais necessárias antes da produção
+
+1. Vercel → projeto `ledsnet` → Settings → Environment Variables: adicionar `FIREBASE_SERVICE_ACCOUNT_KEY` (JSON da conta de serviço Firebase Admin) e `SUPABASE_SERVICE_ROLE_KEY` (chave secreta do projeto Supabase), nos ambientes Preview e Production conforme necessário.
+2. Repetir a configuração no projeto `ledsnet-l7hs` apenas se ele continuar sendo usado; idealmente manter um projeto Vercel canônico para evitar builds duplicados.
+3. Após a janela de rate limit da Vercel, implantar o commit mais recente de `feat/maps-scraper-kit-adapter` e testar `/api/health`, login Firebase, endpoint autenticado de busca e gravação/leitura dos leads.
+4. Não compartilhar nem commitar os valores das chaves. Não usar prefixo `VITE_` para segredos de servidor.
+
