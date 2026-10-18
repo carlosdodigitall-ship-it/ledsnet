@@ -41,6 +41,7 @@ export interface Lead {
   address?: string;
   city?: string;
   phone?: string;
+  email?: string;
   whatsapp?: string;
   website?: string | null;
   rating?: number;
