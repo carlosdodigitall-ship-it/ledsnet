@@ -170,7 +170,7 @@ def main():
     except Exception as exc:
         raise SystemExit(f"FIREBASE_UID não corresponde a uma conta Firebase válida neste projeto: {exc}") from exc
 
-    client = firestore.client(app=app, database_id=database_id)
+    client = firestore.client(app=app, database_id=None if database_id in ('', '(default)') else database_id)
     collection = client.collection("users").document(user_id).collection("leads")
     saved = 0
     for row in rows:
