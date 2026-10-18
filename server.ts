@@ -3,8 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getAuth } from 'firebase-admin/auth';
-import { getApps } from 'firebase-admin/app';
-import { getServerFirestore } from './src/server/db.js';
+import { getServerFirestore, getServerFirebaseApp } from './src/server/db.js';
 import scraperRouter from './src/server/scraperRoutes.js';
 
 dotenv.config();
@@ -39,8 +38,7 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Sessão Firebase ausente. Entre novamente na plataforma.' });
   }
   try {
-    const app = getApps()[0];
-    if (!app) return res.status(503).json({ error: 'Firebase Admin não está inicializado.' });
+    const app = getServerFirebaseApp();
     const decoded = await getAuth(app).verifyIdToken(token);
     (req as Request & { firebaseUid?: string }).firebaseUid = decoded.uid;
     return next();
@@ -410,7 +408,7 @@ app.post('/api/whatsapp/send', requireAuth, async (req: Request, res: Response) 
       });
     }
 
-    const config = await serverDb.getConfig();
+    const config = await readUserConfig(req);
     const limiteDiario = config?.limiteDiarioEnvios ?? 50;
     const todayCount = await userTodaySendCount(req);
 
