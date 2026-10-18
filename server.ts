@@ -560,10 +560,13 @@ app.get('/api/templates', requireAuth, async (req: Request, res: Response) => {
   try {
     const snap = await userCollection(req, 'templates').get();
     const templates = snap.empty ? [
-      { id: 'tpl-1', titulo: 'Oportunidade Comercial Direta', texto: 'Olá, {nome}! Notei que sua empresa em {bairro} tem grande potencial de novos clientes e gostaria de apresentar uma solução para aumentar seus atendimentos.' },
-      { id: 'tpl-2', titulo: 'Presença Online e Site', texto: 'Olá, equipe da {empresa}! Vi que muitos clientes procuram seus serviços em {bairro}. Tenho uma proposta para captar mais contatos.' },
-      { id: 'tpl-3', titulo: 'Parceria e Serviços B2B', texto: 'Olá, tudo bem? Gostaria de conversar sobre uma parceria comercial na região de {bairro}. Podemos agendar 5 minutos esta semana?' }
-    ] : snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      { id: 'tpl-1', title: 'Oportunidade Comercial Direta', text: 'Olá, {nome}! Notei que sua empresa em {bairro} tem grande potencial de novos clientes e gostaria de apresentar uma solução para aumentar seus atendimentos.' },
+      { id: 'tpl-2', title: 'Presença Online e Site', text: 'Olá, equipe da {empresa}! Vi que muitos clientes procuram seus serviços em {bairro}. Tenho uma proposta para captar mais contatos.' },
+      { id: 'tpl-3', title: 'Parceria e Serviços B2B', text: 'Olá, tudo bem? Gostaria de conversar sobre uma parceria comercial na região de {bairro}. Podemos agendar 5 minutos esta semana?' }
+    ] : snap.docs.map(doc => {
+      const data = doc.data();
+      return { ...data, id: doc.id, title: data.title || data.titulo || '', text: data.text || data.texto || '' };
+    });
     res.json({ success: true, templates });
   } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar modelos', details: err?.message }); }
 });
