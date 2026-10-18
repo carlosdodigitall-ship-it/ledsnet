@@ -2,8 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Zero-Trust: Negação total de leitura e escrita diretas pelo cliente
-    // Todo o acesso aos dados é realizado exclusivamente pelo backend seguro
-    // que valida a chave de acesso privada do proprietário (ACCESS_KEY).
+    // Todo o acesso aos dados é realizado exclusivamente pelo backend seguro,
+    // que valida Firebase ID tokens e restringe consultas ao UID autenticado.
     match /{document=**} {
       allow read, write: if false;
     }
