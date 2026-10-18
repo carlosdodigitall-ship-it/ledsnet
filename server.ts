@@ -14,9 +14,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Configuração de Chave de Acesso Privada
-const ACCESS_KEY = process.env.ACCESS_KEY || '';
-
 // Configurações da Evolution API
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
@@ -46,20 +43,6 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Sessão Firebase inválida ou expirada. Entre novamente.' });
   }
 }
-
-// Endpoint para validação da chave de acesso no login do painel
-app.post('/api/auth/validate-key', (req: Request, res: Response) => {
-  const { key } = req.body;
-  if (!key) {
-    return res.status(400).json({ valid: false, error: 'Chave não informada.' });
-  }
-
-  if (key === ACCESS_KEY) {
-    return res.json({ valid: true, message: 'Chave de acesso autenticada com sucesso.' });
-  }
-
-  return res.status(401).json({ valid: false, error: 'Chave de acesso incorreta.' });
-});
 
 // Endpoint de saúde
 app.get('/api/health', (_req: Request, res: Response) => {
