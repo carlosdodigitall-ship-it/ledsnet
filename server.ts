@@ -193,13 +193,19 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
     }
 
     // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
+    const userId = (req as FirebaseRequest).firebaseUid!;
+    const existingSupabaseLeads = isSupabaseLeadsConfigured()
+      ? await listSupabaseLeads(userId)
+      : null;
     const processedLeads = [];
     for (let i = 0; i < rawPlaces.length; i++) {
       const p = rawPlaces[i];
       const placeId = p.placeId || `place_${Date.now()}_${i}`;
 
-      // Verificação de duplicados no banco
-      const existingLead = await serverDb.findLeadByPlaceId(placeId);
+      // Verifica duplicados no armazenamento ativo, sempre dentro do usuário autenticado.
+      const existingLead = existingSupabaseLeads
+        ? existingSupabaseLeads.find((lead: any) => lead.place_id === placeId)
+        : await serverDb.findLeadByPlaceId(placeId);
       const isDuplicate = !!existingLead;
 
       // Limpeza de telefone no padrão E.164 sem o + (ex: 5571999998888)
@@ -291,7 +297,7 @@ app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
     if (search) leads = leads.filter((lead: any) => [lead.nome, lead.name, lead.telefone, lead.phone, lead.email, lead.site, lead.website].some(value => String(value || '').toLowerCase().includes(String(search).toLowerCase())));
     res.json({ success: true, count: leads.length, leads });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao buscar leads no Firestore', details: err?.message });
+    res.status(500).json({ error: 'Erro ao buscar leads', details: err?.message });
   }
 });
 
@@ -352,7 +358,7 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
     await ref.set(lead, { merge: true });
     res.status(201).json({ success: true, lead });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao salvar lead no Firestore', details: err?.message });
+    res.status(500).json({ error: 'Erro ao salvar lead', details: err?.message });
   }
 });
 
