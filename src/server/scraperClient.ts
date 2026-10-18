@@ -14,7 +14,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     signal: init.signal ?? AbortSignal.timeout(20_000),
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+      'X-API-Key': apiKey,
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       ...init.headers,
     },
