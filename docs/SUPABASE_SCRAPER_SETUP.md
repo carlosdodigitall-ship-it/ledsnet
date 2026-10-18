@@ -6,11 +6,12 @@ Esta branch adiciona a primeira etapa de armazenamento dos resultados reais e um
 1. Crie ou selecione um projeto Supabase exclusivo para o LedsNet (não reutilize o banco do Gestor Inove sem decisão explícita).
 2. Abra SQL Editor e execute o arquivo supabase/migrations/202610180001_ledsnet_leads.sql.
 3. Copie a Project URL e a chave service_role/secret. Nunca use essa chave no frontend.
+4. Na Vercel, abra o projeto LedsNet → Settings → Environment Variables e adicione SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY para os ambientes necessários. Faça um novo deploy para aplicar as variáveis.
 
 ## 2. Configurar secrets no GitHub
 No repositório carlosdodigitall-ship-it/ledsnet, abra Settings → Secrets and variables → Actions → New repository secret:
 - SUPABASE_URL: Project URL do projeto Supabase do LedsNet.
-- SUPABASE_SERVICE_ROLE_KEY: chave secreta do Supabase (somente no GitHub Actions).
+- SUPABASE_SERVICE_ROLE_KEY: chave secreta do Supabase (somente em variáveis server-side da Vercel e secrets do GitHub Actions; nunca em VITE_* nem no navegador).
 
 ## 3. Executar uma busca de teste
 1. Abra Actions → LedsNet - Buscar leads no Google Maps → Run workflow.
