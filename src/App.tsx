@@ -223,7 +223,7 @@ function DashboardApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="app-shell min-h-screen bg-[#F5F7FB] text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
       {/* Modal de Bloqueio por Chave Privada */}
 
       {/* Top Bar Header com Botão da Gaveta Lateral */}
