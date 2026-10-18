@@ -119,7 +119,7 @@ export async function searchLeadsWithGemini({
 
     const geocodeResponse = await fetch(geocodeUrl, {
       headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'pt-BR,pt;q=0.9' },
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(2500),
     });
 
     if (geocodeResponse.status === 429) {
@@ -149,7 +149,7 @@ export async function searchLeadsWithGemini({
       .map((clause) => clause.replaceAll('{radius}', String(radius))
         .replaceAll('{lat}', center.lat).replaceAll('{lon}', center.lon))
       .join('\n');
-    const query = `[out:json][timeout:25];(\n${clauses}\n);out center tags;`;
+    const query = `[out:json][timeout:12];(\n${clauses}\n);out center tags 100;`;
 
     // Overpass has multiple public instances; try a secondary endpoint if the
     // primary is temporarily unavailable. Short timeouts avoid hanging requests.
@@ -161,7 +161,7 @@ export async function searchLeadsWithGemini({
     let payload: { elements?: OsmElement[] } | null = null;
     let lastOverpassError = 'No Overpass endpoint responded';
 
-    for (const endpoint of overpassEndpoints) {
+    for (const [index, endpoint] of overpassEndpoints.entries()) {
       try {
         const overpassResponse = await fetch(endpoint, {
           method: 'POST',
@@ -170,7 +170,7 @@ export async function searchLeadsWithGemini({
             'User-Agent': USER_AGENT,
           },
           body: requestBody,
-          signal: AbortSignal.timeout(4500),
+          signal: AbortSignal.timeout(index === 0 ? 3500 : 2200),
         });
 
         if (overpassResponse.status === 429 || overpassResponse.status === 502 ||
