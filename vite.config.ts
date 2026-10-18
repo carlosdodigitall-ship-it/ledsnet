@@ -9,14 +9,14 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         input: {
-          landing: path.resolve(__dirname, 'index.html'),
-          app: path.resolve(__dirname, 'app.html'),
+          landing: path.resolve(import.meta.dirname, 'index.html'),
+          app: path.resolve(import.meta.dirname, 'app.html'),
         },
       },
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

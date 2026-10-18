@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/entrar", "destination": "/app.html" },
+    { "source": "/criar-conta", "destination": "/app.html" },
+    { "source": "/verificar-email", "destination": "/app.html" },
+    { "source": "/recuperar-senha", "destination": "/app.html" },
+    { "source": "/configurar-conta", "destination": "/app.html" },
+    { "source": "/painel", "destination": "/app.html" },
+    { "source": "/painel/(.*)", "destination": "/app.html" },
+    { "source": "/termos", "destination": "/app.html" },
+    { "source": "/privacidade", "destination": "/app.html" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/vendas", "destination": "/landing.html" },
+    { "source": "/landing", "destination": "/landing.html" }
+  ]
+}

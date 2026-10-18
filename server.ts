@@ -3,11 +3,15 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
-import { cert, getApps as getAdminApps, initializeApp as initializeAdminApp, applicationDefault } from 'firebase-admin/app';
-import { getAuth as getAdminAuth, type DecodedIdToken } from 'firebase-admin/auth';
+import healthHandler from './api/health';
+import searchHandler from './api/leads/search';
+import captureHandler from './api/leads/capture';
+import { initFirebaseAdmin } from './api/_lib/firebaseAdmin';
 
 dotenv.config();
+
+// Inicializa Firebase Admin no bootstrap do servidor
+initFirebaseAdmin();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,327 +21,40 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
 
-// Firebase Admin: valida tokens de identidade antes de executar operações privadas.
-let firebaseAdminReady = false;
-try {
-  if (!getAdminApps().length) {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    if (serviceAccountJson) {
-      initializeAdminApp({ credential: cert(JSON.parse(serviceAccountJson)) });
-    } else {
-      let configProjectId = '';
-      try {
-        const cfg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'firebase-applet-config.json'), 'utf8'));
-        configProjectId = cfg.projectId || '';
-      } catch {}
-      const projectId = process.env.FIREBASE_PROJECT_ID || configProjectId || 'gen-lang-client-0177432537';
-      initializeAdminApp({ credential: applicationDefault(), projectId });
-    }
-  }
-  firebaseAdminReady = getAdminApps().length > 0;
-  console.log(`[Firebase Admin] Inicializado com sucesso. Status: ${firebaseAdminReady ? 'Pronto' : 'Inativo'}`);
-} catch (error) {
-  console.error('[Firebase Admin] Não foi possível inicializar a autenticação:', error);
-}
-
-async function requireFirebaseUser(req: Request, res: Response, next: NextFunction) {
-  if (!firebaseAdminReady) {
-    return res.status(503).json({ error: 'Autenticação do servidor não configurada. Configure as credenciais do Firebase Admin.' });
-  }
-  const authorization = req.header('Authorization') || '';
-  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-  if (!token) return res.status(401).json({ error: 'Entre na sua conta para executar esta ação.' });
-  try {
-    const decoded: DecodedIdToken = await getAdminAuth().verifyIdToken(token);
-    if (process.env.REQUIRE_EMAIL_VERIFIED === 'true' && decoded.email_verified !== true) {
-      return res.status(403).json({ error: 'Confirme seu e-mail antes de executar esta ação.' });
-    }
-    (req as Request & { firebaseUser?: DecodedIdToken }).firebaseUser = decoded;
-    next();
-  } catch (err: any) {
-    console.warn('[Firebase Auth] Erro ao validar token:', err?.message);
-    return res.status(401).json({ error: 'Sua sessão expirou ou não é válida. Entre novamente.' });
-  }
-}
-
-// Inicialização do Google GenAI SDK (Server-Side)
-const apiKey = process.env.GEMINI_API_KEY || '';
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-  ai = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
-
-// Endpoint de saúde
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    service: 'LedsNet API',
-    hasApiKey: !!apiKey,
-    firebaseAdminReady,
-    timestamp: new Date().toISOString(),
-  });
+// Endpoints da API compartilhados com Vercel Functions
+app.get('/api/health', (req: Request, res: Response) => {
+  return healthHandler(req, res);
 });
 
-// Endpoint de Busca de Leads com Google Maps Grounding via Gemini 3.8 Flash
-app.post('/api/leads/search', requireFirebaseUser, async (req: Request, res: Response) => {
-  const { segment = 'Climatização e Refrigeração', location = 'Salvador, BA', radiusKm = 15 } = req.body;
-
-  try {
-    if (ai) {
-      const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
-Encontre negócios e estabelecimentos comerciais reais do ramo de "${segment}" localizados na região de "${location}" (raio aproximado de ${radiusKm}km).
-
-Para cada negócio encontrado, forneça os dados reais e precisos do estabelecimento:
-1. Nome da empresa/estabelecimento
-2. Endereço completo
-3. Cidade e Estado
-4. Telefone comercial ou celular (com DDD)
-5. Nota média no Google Maps (rating)
-6. Quantidade de avaliações (reviewCount)
-7. Website oficial (ou null/vazio se não tiver site próprio)
-8. Se está aberto no horário comercial (openNow: true/false)
-
-Importante: Identifique se o negócio tem ou não site próprio, pois a falta de site é uma oportunidade de venda.
-
-Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo um array de objetos:
-{
-  "places": [
-    {
-      "name": "Nome do Negócio",
-      "segment": "${segment}",
-      "address": "Rua/Av, Bairro",
-      "city": "${location}",
-      "phone": "(XX) XXXXX-XXXX",
-      "website": "https://... ou null",
-      "rating": 4.2,
-      "reviewCount": 18,
-      "openNow": true
-    }
-  ]
-}`;
-
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        });
-
-        const responseText = response.text || '';
-        
-        // Tenta extrair o JSON da resposta
-        let parsedPlaces: any[] = [];
-        try {
-          const jsonMatch = responseText.match(/\{[\s\S]*"places"[\s\S]*\}/) || responseText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            parsedPlaces = Array.isArray(parsed) ? parsed : (parsed.places || []);
-          }
-        } catch (parseErr) {
-          console.warn('JSON parsing fallback needed:', parseErr);
-        }
-
-        if (parsedPlaces.length > 0) {
-          const enriched = parsedPlaces.map((p, idx) => {
-            const rawPhone = p.phone || '';
-            const cleanPhone = rawPhone.replace(/\D/g, '');
-            const cleanWhatsapp = cleanPhone.length >= 10 ? cleanPhone : (cleanPhone ? `71${cleanPhone}` : '');
-
-            return {
-              id: `lead-${Date.now()}-${idx}`,
-              placeId: `place-${idx}-${Date.now()}`,
-              name: p.name || 'Negócio Local',
-              segment: p.segment || segment,
-              address: p.address || `${location}`,
-              city: p.city || location,
-              phone: rawPhone || '(71) 98888-0000',
-              whatsapp: cleanWhatsapp,
-              website: p.website && p.website !== 'null' ? p.website : null,
-              rating: typeof p.rating === 'number' ? p.rating : 4.0,
-              reviewCount: typeof p.reviewCount === 'number' ? p.reviewCount : 10,
-              mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${location}`)}`,
-              openNow: p.openNow ?? true,
-              source: 'google_places' as const,
-            };
-          });
-
-          return res.json({
-            success: true,
-            query: { segment, location, radiusKm },
-            total: enriched.length,
-            leads: enriched,
-            source: 'gemini_grounding',
-          });
-        }
-      } catch (geminiError: any) {
-        console.warn('[LedsNet API] Erro na chamada do modelo Gemini:', geminiError?.message || geminiError);
-        const isQuota = geminiError?.status === 429 || 
-                        geminiError?.message?.includes('429') || 
-                        geminiError?.message?.includes('RESOURCE_EXHAUSTED') ||
-                        geminiError?.message?.includes('quota');
-
-        const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
-        return res.json({
-          success: true,
-          query: { segment, location, radiusKm },
-          total: fallbackLeads.length,
-          leads: fallbackLeads,
-          isFallback: true,
-          quotaExceeded: isQuota,
-          notice: isQuota 
-            ? 'Cota temporária da API excedida. Apresentando empresas locais identificadas no raio selecionado para não interromper seu fluxo.' 
-            : undefined,
-        });
-      }
-    }
-
-    // Caso não haja IA configurada
-    const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
-    return res.json({
-      success: true,
-      query: { segment, location, radiusKm },
-      total: fallbackLeads.length,
-      leads: fallbackLeads,
-      isFallback: true,
-    });
-  } catch (error: any) {
-    console.warn('[LedsNet Search] Exceção capturada na busca:', error?.message);
-    const fallbackLeads = generateContextualLeads(segment, location, radiusKm);
-    return res.json({
-      success: true,
-      query: { segment, location, radiusKm },
-      total: fallbackLeads.length,
-      leads: fallbackLeads,
-      isFallback: true,
-      message: 'Resultados estruturados para a região informada.',
-    });
-  }
+app.post('/api/leads/search', (req: Request, res: Response) => {
+  return searchHandler(req, res);
 });
 
-// Endpoint público de captura para a Landing Page (/captura)
 app.post('/api/leads/capture', (req: Request, res: Response) => {
-  const { name, phone, email, segment, interest, notes, utmSource, utmMedium, utmCampaign, consent } = req.body;
-  if (!name || !phone) {
-    return res.status(400).json({ error: 'Nome e WhatsApp são obrigatórios' });
+  return captureHandler(req, res);
+});
+
+// Rotas de autenticação, onboarding e aplicação React SPA
+const appRoutes = [
+  '/entrar',
+  '/criar-conta',
+  '/verificar-email',
+  '/recuperar-senha',
+  '/configurar-conta',
+  '/painel',
+  '/painel/*',
+  '/termos',
+  '/privacidade',
+  '/app',
+];
+
+// Rotas da Landing Page
+app.get(['/landing', '/vendas'], (_req: Request, res: Response) => {
+  const landingPath = path.resolve(__dirname, 'public', 'landing.html');
+  if (fs.existsSync(landingPath)) {
+    return res.sendFile(landingPath);
   }
-
-  const newLead = {
-    id: `capture-${Date.now()}`,
-    name: name.trim(),
-    segment: segment || interest || 'Climatização e Serviços',
-    address: 'Origem Formulário Web',
-    city: 'Salvador / Web',
-    phone: phone.trim(),
-    whatsapp: phone.replace(/\D/g, ''),
-    website: null,
-    rating: 0,
-    reviewCount: 0,
-    mapsUrl: '',
-    opportunityScore: 85,
-    status: 'novo',
-    notes: `Lead capturado via Landing Page. Interesse: ${interest || 'Geral'}. Obs: ${notes || 'Nenhuma'}. UTMs: [origem: ${utmSource || 'direto'}, campanha: ${utmCampaign || 'geral'}]`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    source: 'landing_page',
-    dealValue: 1500,
-  };
-
-  return res.json({
-    success: true,
-    message: 'Lead recebido com sucesso!',
-    lead: newLead,
-  });
-});
-
-// Gerador de leads realistas contextualizados para a região, bairro e raio de busca
-function generateContextualLeads(segment: string, location: string, radiusKm: number = 10) {
-  const locLower = location.toLowerCase();
-  const isSalvador = locLower.includes('salvador') || locLower.includes('ba') || locLower.includes('pituba') || locLower.includes('barra') || locLower.includes('itaigara') || locLower.includes('lauro');
-  const isSP = locLower.includes('são paulo') || locLower.includes('sp') || locLower.includes('pinheiros') || locLower.includes('moema') || locLower.includes('jardins');
-  const isRJ = locLower.includes('rio') || locLower.includes('rj') || locLower.includes('copacabana') || locLower.includes('tijuca');
-
-  let customNeighborhood = '';
-  if (locLower.includes('pituba')) customNeighborhood = 'Pituba';
-  else if (locLower.includes('barra')) customNeighborhood = 'Barra';
-  else if (locLower.includes('itaigara')) customNeighborhood = 'Itaigara';
-  else if (locLower.includes('caminho das árvores')) customNeighborhood = 'Caminho das Árvores';
-  else if (locLower.includes('lauro de freitas') || locLower.includes('vilas')) customNeighborhood = 'Vilas do Atlântico';
-  else if (locLower.includes('pinheiros')) customNeighborhood = 'Pinheiros';
-  else if (locLower.includes('moema')) customNeighborhood = 'Moema';
-  else if (locLower.includes('copacabana')) customNeighborhood = 'Copacabana';
-
-  const neighborhoods = customNeighborhood && radiusKm <= 5
-    ? [customNeighborhood]
-    : isSalvador
-    ? ['Pituba', 'Barra', 'Caminho das Árvores', 'Itaigara', 'Rio Vermelho', 'Graça', 'Brotas', 'Ondina']
-    : isSP
-    ? ['Pinheiros', 'Moema', 'Jardins', 'Vila Mariana', 'Perdizes', 'Itaim Bibi']
-    : isRJ
-    ? ['Barra da Tijuca', 'Copacabana', 'Ipanema', 'Botafogo', 'Leblon', 'Tijuca']
-    : ['Centro', 'Bairro Comercial', 'Setor Sul', 'Distrito Empresarial', 'Jardins'];
-
-  const templatesBySegment: Record<string, string[]> = {
-    'Condomínios': ['Residencial Torres do Parque', 'Condomínio Solar da Colina', 'Edifício Costa Azul', 'Condomínio Reserva Bela Vista', 'Residencial Alameda das Flores', 'Condomínio Vista do Mar', 'Edifício Empresarial Premium'],
-    'Restaurantes': ['Cantina & Grill Villa', 'Bistrô Mar Azul', 'Churrascaria Fogo Tropical', 'Restaurante Sabor & Prosa', 'Pizzaria Massa Nobre', 'Boteco & Parrilla do Porto', 'Restaurante Varanda Gourmet'],
-    'Clínicas': ['Clínica Médica e Diagnóstico Saúde', 'Centro Integrado de Fisioterapia', 'Consultórios OdontoExcel', 'Clínica Dermatológica DermaVida', 'Espaço Médico Bem Estar', 'Clínica Oftalmológica Visão', 'Instituto de Saúde Integrada'],
-    'Lojas': ['Lojas Conforto Lar', 'Varejo Moda Brasil', 'Mega Centro Automotivo', 'Distribuidora União', 'Magazine & Utilidades do Porto', 'Boutique Elegance', 'Mundo das Tintas & Construção'],
-    'Climatização e Refrigeração': ['Hotel & Pousada Mar Dourado', 'Supermercado Central de Carnes', 'Laboratório Vital Diagnósticos', 'Padaria & Confeitaria Imperial', 'Empresarial Executive Center', 'Frigorífico & Distribuidora Norte', 'Complexo Hospitalar Aliança']
-  };
-
-  const names = templatesBySegment[segment] || [
-    `Comercial ${segment} Premier`,
-    `Grupo ${segment} Central`,
-    `Espaço ${segment} & Serviços`,
-    `Empresarial ${location.split(',')[0]}`,
-    `Centro Operacional ${segment}`,
-    `Unidade Regional ${segment}`
-  ];
-
-  const ddd = isSalvador ? '71' : isSP ? '11' : isRJ ? '21' : '71';
-
-  return names.map((name, i) => {
-    const neighborhood = neighborhoods[i % neighborhoods.length];
-    const hasSite = i % 3 === 0;
-    const rating = [3.4, 3.8, 4.1, 4.5, 3.6, 3.9][i % 6];
-    const reviewCount = [7, 19, 34, 82, 12, 23][i % 6];
-    const streetNumber = 100 + i * 140;
-    const distanceKm = Math.min(radiusKm, Number((0.8 + (i * radiusKm) / names.length).toFixed(1)));
-
-    return {
-      id: `lead-gen-${Date.now()}-${i}`,
-      placeId: `gen-place-${i}-${Date.now()}`,
-      name,
-      segment,
-      address: `Av. Principal, ${streetNumber}, ${neighborhood} (~${distanceKm}km)`,
-      city: `${neighborhood}, ${location}`,
-      phone: `(${ddd}) 9${8000 + i * 123}-${1000 + i * 45}`,
-      whatsapp: `${ddd}9${8000 + i * 123}${1000 + i * 45}`,
-      website: hasSite ? `https://${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br` : null,
-      rating,
-      reviewCount,
-      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${neighborhood} ${location}`)}`,
-      openNow: i % 4 !== 0,
-      source: 'google_places' as const,
-    };
-  });
-}
-
-// Rotas de autenticação e painel
-const appRoutes = ['/entrar', '/criar-conta', '/verificar-email', '/recuperar-senha', '/configurar-conta', '/painel', '/termos', '/privacidade', '/app'];
-
-// Rota direta para a Landing Page de Vendas (HTML único)
-app.get('/landing', (_req: Request, res: Response) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'landing.html'));
-});
-
-app.get('/vendas', (_req: Request, res: Response) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'landing.html'));
+  return res.sendFile(path.resolve(__dirname, 'index.html'));
 });
 
 async function setupServer() {
@@ -375,12 +92,20 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
+  // Em ambiente serverless (Vercel), app.listen() não deve ser executado
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
+    });
+  }
+}
+
+// Inicia servidor apenas fora de ambientes serverless puros
+if (!process.env.VERCEL) {
+  setupServer().catch(err => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
   });
 }
 
-setupServer().catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+export default app;
