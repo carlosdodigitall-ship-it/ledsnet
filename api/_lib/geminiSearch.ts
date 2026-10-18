@@ -1,9 +1,20 @@
-import { GoogleGenAI } from '@google/genai';
-
 interface SearchParams {
   segment: string;
   location: string;
   radiusKm?: number;
+}
+
+interface GooglePlace {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  nationalPhoneNumber?: string;
+  internationalPhoneNumber?: string;
+  websiteUri?: string;
+  rating?: number;
+  userRatingCount?: number;
+  googleMapsUri?: string;
+  currentOpeningHours?: { openNow?: boolean };
 }
 
 export async function searchLeadsWithGemini({
@@ -11,135 +22,135 @@ export async function searchLeadsWithGemini({
   location,
   radiusKm = 15,
 }: SearchParams): Promise<{ status: number; data: any }> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Despite the legacy function name, this now queries Google Places directly.
+  // Configure GOOGLE_MAPS_API_KEY in the Vercel server environment.
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
     return {
       status: 503,
       data: {
         success: false,
-        error: 'A integração com a busca de estabelecimentos reais no Google Maps não está configurada no servidor (variável GEMINI_API_KEY ausente). Configure a chave de API para habilitar a prospecção.',
+        error: 'A busca real do Google Maps não está configurada. Adicione GOOGLE_MAPS_API_KEY nas variáveis de ambiente da Vercel e habilite a Places API (New) no Google Cloud.',
       },
     };
   }
 
+  if (!segment.trim() || !location.trim()) {
+    return {
+      status: 400,
+      data: { success: false, error: 'Informe o segmento e a região para pesquisar.' },
+    };
+  }
+
   try {
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': [
+          'places.id',
+          'places.displayName',
+          'places.formattedAddress',
+          'places.nationalPhoneNumber',
+          'places.internationalPhoneNumber',
+          'places.websiteUri',
+          'places.rating',
+          'places.userRatingCount',
+          'places.googleMapsUri',
+          'places.currentOpeningHours.openNow',
+        ].join(','),
       },
+      body: JSON.stringify({
+        textQuery: `${segment.trim()} em ${location.trim()}, Brasil`,
+        languageCode: 'pt-BR',
+        regionCode: 'BR',
+        pageSize: 20,
+      }),
     });
 
-    const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
-Encontre negócios e estabelecimentos comerciais reais do ramo de "${segment}" localizados na região de "${location}" (raio aproximado de ${radiusKm}km).
+    const payload = await response.json().catch(() => ({}));
 
-Para cada negócio encontrado, forneça os dados reais e precisos do estabelecimento:
-1. Nome da empresa/estabelecimento
-2. Endereço completo
-3. Cidade e Estado
-4. Telefone comercial ou celular (com DDD)
-5. Nota média no Google Maps (rating)
-6. Quantidade de avaliações (reviewCount)
-7. Website oficial (ou null/vazio se não tiver site próprio)
-8. Se está aberto no horário comercial (openNow: true/false)
+    if (!response.ok) {
+      const apiStatus = payload?.error?.status;
+      const apiMessage = payload?.error?.message;
+      console.error('[Google Places] API request failed:', response.status, apiStatus, apiMessage);
 
-Importante: Identifique se o negócio tem ou não site próprio, pois a falta de site é uma oportunidade de venda.
-
-Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo um array de objetos:
-{
-  "places": [
-    {
-      "name": "Nome do Negócio",
-      "segment": "${segment}",
-      "address": "Rua/Av, Bairro",
-      "city": "${location}",
-      "phone": "(XX) XXXXX-XXXX",
-      "website": "https://... ou null",
-      "rating": 4.2,
-      "reviewCount": 18,
-      "openNow": true
-    }
-  ]
-}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    const responseText = response.text || '';
-    let parsedPlaces: any[] = [];
-
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*"places"[\s\S]*\}/) || responseText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        parsedPlaces = Array.isArray(parsed) ? parsed : (parsed.places || []);
+      if (response.status === 403) {
+        return {
+          status: 502,
+          data: {
+            success: false,
+            error: 'O Google recusou a consulta. Confira se a Places API (New) está habilitada no projeto Google Cloud, se a chave GOOGLE_MAPS_API_KEY está correta e se o faturamento está ativo.',
+          },
+        };
       }
-    } catch (parseErr) {
-      console.warn('[Gemini Search] Erro ao extrair JSON dos resultados:', parseErr);
-    }
 
-    if (!parsedPlaces || parsedPlaces.length === 0) {
+      if (response.status === 429) {
+        return {
+          status: 429,
+          data: {
+            success: false,
+            error: 'A cota da API Google Places foi excedida. Verifique as cotas e o faturamento no Google Cloud.',
+          },
+        };
+      }
+
       return {
-        status: 200,
+        status: 502,
         data: {
-          success: true,
-          query: { segment, location, radiusKm },
-          total: 0,
-          leads: [],
-          message: 'Nenhum estabelecimento comercial real foi encontrado para os parâmetros informados no Google Maps.',
+          success: false,
+          error: 'A consulta ao Google Places falhou. Verifique a chave de API, as restrições da chave e a configuração do Google Cloud.',
         },
       };
     }
 
-    const enriched = parsedPlaces.map((p, idx) => {
-      const rawPhone = p.phone || '';
-      const cleanPhone = rawPhone.replace(/\D/g, '');
-      const cleanWhatsapp = cleanPhone.length >= 10 ? cleanPhone : (cleanPhone ? `71${cleanPhone}` : '');
+    const places: GooglePlace[] = Array.isArray(payload?.places) ? payload.places : [];
+    const leads = places
+      .filter((place) => place.id && place.displayName?.text)
+      .map((place) => {
+        const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
+        const digits = phone.replace(/\\D/g, '');
 
-      return {
-        id: `lead-${Date.now()}-${idx}`,
-        placeId: `place-${idx}-${Date.now()}`,
-        name: p.name || 'Negócio Local',
-        segment: p.segment || segment,
-        address: p.address || `${location}`,
-        city: p.city || location,
-        phone: rawPhone,
-        whatsapp: cleanWhatsapp,
-        website: p.website && p.website !== 'null' ? p.website : null,
-        rating: typeof p.rating === 'number' ? p.rating : 4.0,
-        reviewCount: typeof p.reviewCount === 'number' ? p.reviewCount : 10,
-        mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.name} ${location}`)}`,
-        openNow: p.openNow ?? true,
-        source: 'google_places' as const,
-      };
-    });
+        return {
+          id: place.id,
+          placeId: place.id,
+          name: place.displayName!.text!,
+          segment: segment.trim(),
+          address: place.formattedAddress || location.trim(),
+          city: location.trim(),
+          phone,
+          whatsapp: digits,
+          website: place.websiteUri || null,
+          ...(typeof place.rating === 'number' ? { rating: place.rating } : {}),
+          ...(typeof place.userRatingCount === 'number' ? { reviewCount: place.userRatingCount } : {}),
+          mapsUrl: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.displayName!.text} ${location}`)}`,
+          ...(typeof place.currentOpeningHours?.openNow === 'boolean'
+            ? { openNow: place.currentOpeningHours.openNow }
+            : {}),
+          source: 'google_places' as const,
+        };
+      });
 
     return {
       status: 200,
       data: {
         success: true,
         query: { segment, location, radiusKm },
-        total: enriched.length,
-        leads: enriched,
-        source: 'gemini_grounding',
+        total: leads.length,
+        leads,
+        source: 'google_places_api',
+        message: leads.length ? undefined : 'O Google Places não retornou estabelecimentos para essa pesquisa. Tente outro segmento ou região.',
       },
     };
   } catch (error: any) {
-    console.error('[Gemini Search] Erro na consulta de empresas reais:', error?.message || error);
-    const isQuota = error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
-
+    console.error('[Google Places] Request error:', error?.message || error);
     return {
-      status: isQuota ? 429 : 502,
+      status: 502,
       data: {
         success: false,
-        error: isQuota
-          ? 'Cota temporária da API do Google Maps/Gemini excedida. Tente novamente em alguns minutos.'
-          : 'Não foi possível consultar os dados de estabelecimentos reais no Google Maps. Verifique as credenciais e tente novamente.',
+        error: 'Não foi possível conectar ao Google Places. Tente novamente e confira a disponibilidade da API.',
       },
     };
   }
