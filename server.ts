@@ -118,8 +118,8 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
             name: p.name,
             address: p.formatted_address,
             placeId: p.place_id,
-            rating: p.rating || 3.8,
-            reviewCount: p.user_ratings_total || 5,
+            rating: p.rating ?? null,
+            reviewCount: p.user_ratings_total ?? null,
             website: null,
             phone: null,
             openNow: p.opening_hours?.open_now ?? true
@@ -132,62 +132,12 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
       }
     }
 
-    // 2. Se não obteve resultados ou não há chave do Places, usa Gemini 3.8 Flash com Maps Grounding
-    if (rawPlaces.length === 0 && ai) {
-      try {
-        const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
-Encontre negócios e estabelecimentos comerciais reais do ramo de "${segment}" localizados na região de "${location}" (raio aproximado de ${radiusKm}km).
-Para cada negócio encontrado, forneça os dados reais e precisos:
-1. Nome da empresa/estabelecimento
-2. Endereço completo
-3. Telefone comercial ou celular (DDD + 8 ou 9 dígitos)
-4. Nota média no Google Maps (rating)
-5. Quantidade de avaliações (reviewCount)
-6. Website oficial (ou null se não tiver site próprio)
-7. ID único ou identificador do local no Google Maps (placeId)
-
-Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo um array de objetos:
-{
-  "places": [
-    {
-      "name": "Nome",
-      "address": "Endereço, Bairro, Cidade - UF",
-      "phone": "(71) 98888-0000",
-      "rating": 3.8,
-      "reviewCount": 14,
-      "website": null,
-      "placeId": "ChIJ..."
-    }
-  ]
-}`;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-
-        const text = response.text || '{}';
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed.places)) {
-          rawPlaces = parsed.places;
-        }
-      } catch (aiErr: any) {
-        if (aiErr?.status === 429 || aiErr?.message?.includes('429') || aiErr?.message?.includes('quota')) {
-          console.warn('[Gemini Search] Cota atingida, utilizando gerador de amostras representativas.');
-        } else {
-          console.warn('[Gemini Search] Erro inesperado:', aiErr);
-        }
-      }
-    }
-
+    // Não usa texto gerado por LLM como fonte de empresas reais. Sem Google Places,
+    // a busca real deve ser executada pelo worker de scraping, não por dados inventados.
     // Não inventa estabelecimentos quando as fontes reais falham.
     if (rawPlaces.length === 0) {
       return res.status(503).json({
-        error: 'Nenhuma fonte real de pesquisa respondeu. Configure GOOGLE_PLACES_API_KEY ou GEMINI_API_KEY, ou use a opção de extração por scraper com a VPS configurada.',
+        error: 'Nenhuma fonte real de pesquisa respondeu. Configure GOOGLE_PLACES_API_KEY ou execute o workflow de scraping do LedsNet.',
         sourceUnavailable: true,
       });
     }
