@@ -153,13 +153,24 @@ def main():
         return
 
     try:
-        from google.cloud import firestore
-        from google.oauth2 import service_account
+        import firebase_admin
+        from firebase_admin import auth, credentials, firestore
     except ImportError as exc:
-        raise SystemExit("Dependência ausente. Instale google-cloud-firestore antes da importação.") from exc
+        raise SystemExit("Dependência ausente. Instale firebase-admin antes da importação.") from exc
 
-    credentials = service_account.Credentials.from_service_account_info(parsed_account)
-    client = firestore.Client(project=project_id, credentials=credentials, database=database_id)
+    credential = credentials.Certificate(parsed_account)
+    app_name = "ledsnet-scraper-import"
+    try:
+        app = firebase_admin.get_app(app_name)
+    except ValueError:
+        app = firebase_admin.initialize_app(credential, {"projectId": project_id}, name=app_name)
+
+    try:
+        auth.get_user(user_id, app=app)
+    except Exception as exc:
+        raise SystemExit(f"FIREBASE_UID não corresponde a uma conta Firebase válida neste projeto: {exc}") from exc
+
+    client = firestore.client(app=app, database_id=database_id)
     collection = client.collection("users").document(user_id).collection("leads")
     saved = 0
     for row in rows:
