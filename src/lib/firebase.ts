@@ -1,28 +1,28 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import appletConfig from '../../firebase-applet-config.json';
 
-// Inicialização do SDK do Firebase no cliente
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const config = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId,
+};
 
-// Conexão com o banco de dados específico do Firestore
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const isFirebaseConfigured = Boolean(
+  config.apiKey && config.authDomain && config.projectId && config.appId
+);
 
-/**
- * Validação de conexão e aplicação das regras Zero-Trust.
- * Em conformidade com o PASSO 2, o cliente deve receber 'permission-denied'
- * em leituras diretas, pois todo tráfego de dados é intermediado pelo backend.
- */
-export async function testFirestoreConnection(): Promise<{ connected: boolean; zeroTrustEnforced: boolean }> {
-  try {
-    await getDocFromServer(doc(db, 'teste', 'ping'));
-    return { connected: true, zeroTrustEnforced: false };
-  } catch (error: any) {
-    if (error?.code === 'permission-denied') {
-      return { connected: true, zeroTrustEnforced: true };
-    }
-    return { connected: false, zeroTrustEnforced: false };
-  }
-}
+export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(config);
+export const auth = getAuth(firebaseApp);
+export const db = appletConfig.firestoreDatabaseId
+  ? getFirestore(firebaseApp, appletConfig.firestoreDatabaseId)
+  : getFirestore(firebaseApp);
 
-export default app;
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+export default firebaseApp;

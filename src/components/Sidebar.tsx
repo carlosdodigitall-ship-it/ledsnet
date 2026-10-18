@@ -254,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   Chave Ativa
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono-numbers truncate block">
-                  {accessKey || 'LEDS-DEMO-2026'}
+                  {'Autenticação Firebase ativa'}
                 </span>
               </div>
             </div>

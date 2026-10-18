@@ -1,53 +1,111 @@
 /**
- * Testes Automatizados de Validação das Regras do Firestore (Zero-Trust)
+ * Testes Automatizados de Validação das Regras do Firestore (Isolamento por Usuário)
  * 
- * Regra ativa em firestore.rules:
- * match /{document=**} {
- *   allow read, write: if false;
- * }
+ * Regras ativas em firestore.rules:
+ * - /users/{uid}: allow read, write: if request.auth.uid == uid;
+ * - /{collectionName}/{docId}: allow read, write: if resource.data.ownerId == request.auth.uid;
+ * - todo o resto: allow read, write: if false;
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-describe('Validação de Regras do Firestore (LedsNet Security Specification)', () => {
-  it('CASO NEGADO: Deve rejeitar qualquer leitura direta feita pelo SDK do cliente', async () => {
-    // Simula uma tentativa de leitura direta não autenticada no cliente:
-    // GET /databases/(default)/documents/leads/lead-123
-    const clientRequest = {
-      origin: 'client_browser',
-      auth: null,
-      path: 'leads/lead-123',
-      operation: 'get'
-    };
+function evaluateRule({
+  path,
+  authUid,
+  operation,
+  existingData,
+  newData,
+}: {
+  path: string;
+  authUid: string | null;
+  operation: 'get' | 'list' | 'create' | 'update' | 'delete';
+  existingData?: { ownerId?: string; [key: string]: unknown };
+  newData?: { ownerId?: string; [key: string]: unknown };
+}): boolean {
+  if (!authUid) return false;
 
-    // Avaliação contra a regra: allow read, write: if false;
-    const isAllowedByRules = false;
-    assert.strictEqual(isAllowedByRules, false, 'Leitura direta pelo cliente deve ser estritamente proibida');
+  const parts = path.split('/').filter(Boolean);
+  const [collection, docId] = parts;
+
+  if (collection === 'users') {
+    return authUid === docId;
+  }
+
+  if (operation === 'get' || operation === 'list') {
+    return existingData?.ownerId === authUid;
+  }
+
+  if (operation === 'create') {
+    return newData?.ownerId === authUid;
+  }
+
+  if (operation === 'update') {
+    return existingData?.ownerId === authUid && newData?.ownerId === authUid;
+  }
+
+  if (operation === 'delete') {
+    return existingData?.ownerId === authUid;
+  }
+
+  return false;
+}
+
+describe('Validação de Regras do Firestore — LedsNet com Isolamento por Usuário', () => {
+  it('CASO NEGADO: Acesso não autenticado a leads ou perfil', () => {
+    const allowed = evaluateRule({
+      path: 'leads/lead-1',
+      authUid: null,
+      operation: 'get',
+      existingData: { ownerId: 'usr-123' },
+    });
+    assert.strictEqual(allowed, false, 'Usuário não autenticado deve ser rejeitado');
   });
 
-  it('CASO NEGADO: Deve rejeitar qualquer gravação ou mutação direta feita pelo SDK do cliente', async () => {
-    // Simula uma tentativa de injeção de dados maliciosa direta pelo cliente:
-    // POST /databases/(default)/documents/leads
-    const clientPayload = {
-      nome: 'Empresa Teste Invasão',
-      score: 100
-    };
-
-    const isAllowedByRules = false;
-    assert.strictEqual(isAllowedByRules, false, 'Escrita direta pelo cliente deve ser estritamente bloqueada');
+  it('CASO NEGADO: Usuário tentando ler leads de outro usuário', () => {
+    const allowed = evaluateRule({
+      path: 'leads/lead-1',
+      authUid: 'usr-hacker',
+      operation: 'get',
+      existingData: { ownerId: 'usr-legit' },
+    });
+    assert.strictEqual(allowed, false, 'Leitura de documento pertencente a outro ownerId deve ser bloqueada');
   });
 
-  it('CASO PERMITIDO: Acesso intermediado pelo Backend com validação de ACCESS_KEY e privilégios de Admin', async () => {
-    // O backend recebe a requisição com o cabeçalho 'x-access-key' válido
-    const mockRequestHeaderKey = 'CHAVE_PRIVADA_MEU_NEGOCIO';
-    const serverConfiguredKey = process.env.ACCESS_KEY || 'CHAVE_PRIVADA_MEU_NEGOCIO';
+  it('CASO NEGADO: Usuário tentando criar documento com ownerId de outro', () => {
+    const allowed = evaluateRule({
+      path: 'leads/lead-2',
+      authUid: 'usr-attacker',
+      operation: 'create',
+      newData: { ownerId: 'usr-victim', name: 'Lead Falso' },
+    });
+    assert.strictEqual(allowed, false, 'Criação de documento atribuído a outro usuário deve ser bloqueada');
+  });
 
-    const isAuthenticatedByBackend = mockRequestHeaderKey === serverConfiguredKey;
-    assert.strictEqual(isAuthenticatedByBackend, true, 'Backend valida com sucesso a chave privada de acesso');
+  it('CASO PERMITIDO: Usuário lendo e atualizando seu próprio perfil em /users/{uid}', () => {
+    const readAllowed = evaluateRule({
+      path: 'users/usr-123',
+      authUid: 'usr-123',
+      operation: 'get',
+    });
+    assert.strictEqual(readAllowed, true, 'Usuário deve conseguir acessar seu próprio perfil');
+  });
 
-    // Ao validar a chave privada, o backend utiliza o Firebase Admin SDK (que opera com bypass de regras de segurança de cliente)
-    const adminSDKBypassesClientRules = true;
-    assert.strictEqual(adminSDKBypassesClientRules, true, 'Backend opera como autoridade central de dados com Firebase Admin');
+  it('CASO PERMITIDO: Usuário acessando e salvando seus próprios leads', () => {
+    const readAllowed = evaluateRule({
+      path: 'leads/lead-456',
+      authUid: 'usr-123',
+      operation: 'get',
+      existingData: { ownerId: 'usr-123', name: 'Empresa A' },
+    });
+    assert.strictEqual(readAllowed, true, 'Usuário deve conseguir ler seus próprios leads');
+
+    const createAllowed = evaluateRule({
+      path: 'leads/lead-789',
+      authUid: 'usr-123',
+      operation: 'create',
+      newData: { ownerId: 'usr-123', name: 'Empresa B' },
+    });
+    assert.strictEqual(createAllowed, true, 'Usuário deve conseguir criar leads com seu ownerId');
   });
 });
