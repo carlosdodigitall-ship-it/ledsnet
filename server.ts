@@ -579,6 +579,65 @@ app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
   } catch (err: any) { res.status(500).json({ error: 'Erro ao salvar modelo', details: err?.message }); }
 });
 
+async function replaceUserCollection(req: Request, name: string, items: unknown[]) {
+  if (!Array.isArray(items) || items.length > 400) {
+    throw new Error('Envie uma lista válida com no máximo 400 registros por operação.');
+  }
+  const collection = userCollection(req, name);
+  const existing = await collection.get();
+  for (const doc of existing.docs) await doc.ref.delete();
+  for (let offset = 0; offset < items.length; offset += 400) {
+    const batch = getServerFirestore().batch();
+    for (const raw of items.slice(offset, offset + 400)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const item = raw as Record<string, unknown>;
+      const id = typeof item.id === 'string' && item.id.length > 0 && item.id.length < 120 && !item.id.includes('/')
+        ? item.id
+        : getServerFirestore().collection('_id_generation').doc().id;
+      batch.set(collection.doc(id), { ...item, id, atualizadoEm: new Date().toISOString() }, { merge: true });
+    }
+    await batch.commit();
+  }
+}
+
+app.get('/api/tasks', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await userCollection(req, 'tasks').get();
+    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ success: true, tasks });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar tarefas', details: err?.message }); }
+});
+
+app.put('/api/tasks', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'tasks', req.body?.tasks);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar tarefas', details: err?.message }); }
+});
+
+app.get('/api/interactions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const snapshot = await userCollection(req, 'interactions').get();
+    const interactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    interactions.sort((a: any, b: any) => new Date(b.timestamp || b.criadoEm || 0).getTime() - new Date(a.timestamp || a.criadoEm || 0).getTime());
+    res.json({ success: true, interactions });
+  } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar interações', details: err?.message }); }
+});
+
+app.put('/api/interactions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'interactions', req.body?.interactions);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar interações', details: err?.message }); }
+});
+
+app.put('/api/templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await replaceUserCollection(req, 'templates', req.body?.templates);
+    res.json({ success: true });
+  } catch (err: any) { res.status(400).json({ error: 'Erro ao salvar modelos', details: err?.message }); }
+});
+
 // KPIs do Dashboard
 app.get('/api/stats', requireAuth, async (req: Request, res: Response) => {
   try {
