@@ -14,7 +14,9 @@ import {
   Loader2,
   Sparkles,
   AlertCircle,
-  Info
+  Info,
+  Copy,
+  Mail
 } from 'lucide-react';
 import { Lead, SearchFilters } from '../types';
 import { calculateOpportunityScore } from '../services/scorer';
@@ -55,6 +57,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
   const [segment, setSegment] = useState('Climatização e Refrigeração');
   const [location, setLocation] = useState('Salvador, BA');
   const [radiusKm, setRadiusKm] = useState(15);
+  const [includeEmails, setIncludeEmails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<Lead[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -78,7 +81,67 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
     setNoticeMessage('');
 
     try {
-      const data = await api.searchPlaces(location.trim(), segment.trim(), radiusKm);
+      let data: any;
+      if (includeEmails) {
+        setNoticeMessage('Criando busca real com extração de e-mails. Isso pode levar alguns instantes...');
+        const created = await api.createScraperJob({
+          keyword: `${segment.trim()} em ${location.trim()}`,
+          lang: 'pt',
+          max_depth: 1,
+          email: true,
+          fast_mode: true,
+          timeout: 120,
+        });
+        const jobId = String(created?.job?.id || created?.job?.externalJobId || created?.job?.externalJobID || '');
+        if (!jobId) throw new Error('O scraper não retornou o identificador da busca. Verifique se a API da VPS está atualizada.');
+        let remote: any = null;
+        let finished = false;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const response = await api.getScraperJob(jobId);
+          const job = response?.job || {};
+          remote = job?.result || job?.results || job;
+          const status = String(remote?.status || job?.status || '').toLowerCase();
+          if (['completed', 'complete', 'done', 'success', 'succeeded'].includes(status)) { finished = true; break; }
+          if (['failed', 'error', 'cancelled', 'discarded'].includes(status)) {
+            throw new Error(String(remote?.error || job?.error || 'A busca no scraper falhou.'));
+          }
+          setNoticeMessage(`Busca em andamento no scraper… tentativa ${attempt + 1}/60`);
+        }
+        if (!finished) throw new Error('A busca ainda está em andamento. Tente novamente em instantes; o job continua salvo no Firestore.');
+        const rows = Array.isArray(remote?.results) ? remote.results
+          : Array.isArray(remote?.data) ? remote.data
+          : Array.isArray(remote?.items) ? remote.items
+          : Array.isArray(remote?.job?.results) ? remote.job.results
+          : Array.isArray(jobResultsFallback(remote)) ? jobResultsFallback(remote) : [];
+        const mapped = rows.map((raw: any, index: number) => {
+          const emailValue = Array.isArray(raw.emails) ? raw.emails.join(', ') : Array.isArray(raw.email) ? raw.email.join(', ') : String(raw.emails || raw.email || '');
+          const phoneValue = String(raw.phone || raw.telephone || '');
+          const websiteValue = raw.website || raw.site || null;
+          const ratingValue = Number(raw.review_rating ?? raw.rating ?? 0);
+          const reviewValue = Number(raw.review_count ?? raw.reviewCount ?? 0);
+          const scoreData = calculateOpportunityScore({ website: websiteValue, rating: ratingValue, reviewCount: reviewValue, phone: phoneValue });
+          const addressValue = String(raw.address || raw.full_address || location.trim());
+          const nameValue = String(raw.title || raw.name || raw.company || 'Empresa sem nome');
+          const idValue = String(raw.place_id || raw.placeId || raw.cid || `scraper-${Date.now()}-${index}`);
+          return {
+            id: idValue, placeId: idValue, place_id: idValue,
+            name: nameValue, nome: nameValue, segment: segment.trim(), ramo: segment.trim(),
+            address: addressValue, endereco: addressValue, city: location.trim(), regiao: location.trim(),
+            phone: phoneValue, telefone: phoneValue, email: emailValue,
+            website: websiteValue, site: websiteValue, rating: ratingValue, nota: ratingValue,
+            reviewCount: reviewValue, numeroAvaliacoes: reviewValue,
+            opportunityScore: scoreData.score, score: scoreData.score, scoreBreakdown: scoreData.breakdown,
+            status: 'novo' as const, notes: '', origem: 'places' as const, source: 'google_places' as const,
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+            criadoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString(),
+            mapsUrl: raw.cid ? `https://www.google.com/maps?cid=${raw.cid}` : undefined,
+          } as Lead;
+        });
+        data = { leads: mapped, duplicatesFound: 0 };
+      } else {
+        data = await api.searchPlaces(location.trim(), segment.trim(), radiusKm);
+      }
 
       if (data.leads && Array.isArray(data.leads)) {
         const enriched = data.leads.map((raw: any) => {
@@ -96,16 +159,17 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
             name: raw.nome || raw.name,
             telefone: raw.telefone || raw.phone,
             phone: raw.telefone || raw.phone,
+            email: raw.email || (Array.isArray(raw.emails) ? raw.emails.join(', ') : raw.emails) || '',
             ramo: raw.ramo || raw.segment || segment,
             segment: raw.ramo || raw.segment || segment,
             regiao: raw.regiao || raw.city || location,
             city: raw.regiao || raw.city || location,
             endereco: raw.endereco || raw.address,
             address: raw.endereco || raw.address,
-            nota: raw.nota || raw.rating || 3.8,
-            rating: raw.nota || raw.rating || 3.8,
-            numeroAvaliacoes: raw.numeroAvaliacoes || raw.reviewCount || 10,
-            reviewCount: raw.numeroAvaliacoes || raw.reviewCount || 10,
+            nota: raw.nota || raw.rating || 0,
+            rating: raw.nota || raw.rating || 0,
+            numeroAvaliacoes: raw.numeroAvaliacoes || raw.reviewCount || 0,
+            reviewCount: raw.numeroAvaliacoes || raw.reviewCount || 0,
             site: raw.site || raw.website || null,
             website: raw.site || raw.website || null,
             score: raw.score || scoreData.score,
@@ -113,22 +177,21 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
             scoreBreakdown: scoreData.breakdown,
             status: raw.status || ('novo' as const),
             isDuplicate: raw.isDuplicate,
-            notes: '',
+            notes: raw.notes || '',
             origem: 'places' as const,
             source: 'google_places' as const,
             criadoEm: raw.criadoEm || new Date().toISOString(),
             atualizadoEm: raw.atualizadoEm || new Date().toISOString(),
           } as Lead;
         });
-
-        // Ordena por maior Score de Oportunidade primeiro (mais urgentes)
         enriched.sort((a: Lead, b: Lead) => (b.opportunityScore || b.score || 0) - (a.opportunityScore || a.score || 0));
         setSearchResults(enriched);
         setHasSearched(true);
-
-        if (data.duplicatesFound > 0) {
-          setNoticeMessage(`${data.duplicatesFound} estabelecimentos encontrados já existem no seu banco de dados e foram marcados.`);
-        }
+        setNoticeMessage(includeEmails
+          ? `Busca concluída: ${enriched.filter((lead) => lead.email).length} empresas retornaram e-mail público. Use os botões nos cartões para copiar os contatos.`
+          : data.duplicatesFound > 0
+            ? `${data.duplicatesFound} estabelecimentos encontrados já existem no seu banco de dados e foram marcados.`
+            : '');
       } else {
         setErrorMessage('Nenhum estabelecimento encontrado com os filtros atuais.');
       }
@@ -192,7 +255,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
             {/* Ramo de Atividade */}
             <div className="md:col-span-6">
               <label className="block text-[11px] font-semibold text-slate-350 uppercase tracking-wider mb-1.5">
-                Ramo de Atividade / Negócio
+                Empresa ou ramo de atividade
               </label>
               <input
                 type="text"
@@ -252,6 +315,12 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
               </span>
             </div>
 
+            <label className="flex items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-3 py-2.5 text-xs text-slate-200 cursor-pointer">
+              <input type="checkbox" checked={includeEmails} onChange={(e) => setIncludeEmails(e.target.checked)} className="accent-cyan-400" />
+              <Mail className="w-4 h-4 text-cyan-300" />
+              <span>Extrair e-mails públicos (scraper)</span>
+            </label>
+
             {/* Botão de Busca */}
             <div className="flex items-center gap-2">
               <button
@@ -267,7 +336,7 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
                 ) : (
                   <>
                     <Search className="w-3.5 h-3.5" />
-                    <span>Buscar Estabelecimentos ({radiusKm}km)</span>
+                    <span>{includeEmails ? 'Buscar empresas + e-mails' : `Buscar Estabelecimentos (${radiusKm}km)`}</span>
                   </>
                 )}
               </button>
@@ -433,9 +502,15 @@ export const LeadFinderView: React.FC<LeadFinderViewProps> = ({
                         {lead.reviewCount} avaliações
                       </span>
                       <span className="text-slate-600">·</span>
-                      <span className="text-slate-400 font-mono-numbers">{lead.phone}</span>
+                      <span className="text-slate-400 font-mono-numbers">{lead.phone || 'Telefone indisponível'}</span>
+                      {lead.phone && <button type="button" title="Copiar telefone" onClick={() => navigator.clipboard.writeText(lead.phone || '')} className="text-blue-300 hover:text-white" aria-label="Copiar telefone"><Copy className="w-3.5 h-3.5" /></button>}
                     </div>
 
+                    {lead.email && <div className="mt-2 flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2 text-[11px] text-cyan-100">
+                      <Mail className="w-3.5 h-3.5 shrink-0 text-cyan-300" />
+                      <span className="min-w-0 flex-1 break-all">{lead.email}</span>
+                      <button type="button" title="Copiar e-mail" onClick={() => navigator.clipboard.writeText(lead.email || '')} className="shrink-0 text-cyan-300 hover:text-white" aria-label="Copiar e-mail"><Copy className="w-3.5 h-3.5" /></button>
+                    </div>}
                     <div className="pt-1">
                       {lead.website ? (
                         <a
