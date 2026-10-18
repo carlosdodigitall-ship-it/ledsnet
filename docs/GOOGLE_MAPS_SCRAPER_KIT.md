@@ -2,7 +2,7 @@
 
 ## O que foi integrado
 
-O link informado anteriormente (\`vzbaggio/google-maps-scraper-kit\`) não pôde ser localizado pelo conector do GitHub. Para não copiar código de um repositório que não conseguimos verificar, esta integração usa o motor open-source [gosom/google-maps-scraper](https://github.com/gosom/google-maps-scraper), que já é a base do worker do LedsNet e possui licença MIT.
+O link informado anteriormente (vzbaggio/google-maps-scraper-kit) não pôde ser localizado pelo conector do GitHub. Para não copiar código de um repositório que não conseguimos verificar, esta integração usa o motor open-source [gosom/google-maps-scraper](https://github.com/gosom/google-maps-scraper), que já é a base do worker do LedsNet e possui licença MIT.
 
 A integração mantém o painel e o banco do LedsNet; não substitui o projeto nem cria outro banco.
 
@@ -10,27 +10,25 @@ A integração mantém o painel e o banco do LedsNet; não substitui o projeto n
 
 1. O usuário dispara manualmente o workflow **LedsNet - Buscar leads no Google Maps** em GitHub Actions.
 2. O workflow executa o scraper em um runner temporário do GitHub, sem exigir VPS própria.
-3. O resultado é normalizado pelo \`scripts/import_scraper_results.py\`.
+3. O resultado é normalizado pelo arquivo **scripts/import_scraper_results.py**.
 4. Os registros são enviados ao Supabase em lotes de até 100 e associados ao Firebase UID informado.
-5. O índice único \`(user_id, place_id)\` permite atualizar registros repetidos sem duplicá-los.
+5. O índice único **(user_id, place_id)** permite atualizar registros repetidos sem duplicá-los.
 6. O arquivo bruto é salvo como artefato do workflow por sete dias para diagnóstico.
 
 ## Formatos aceitos pelo importador
 
-O importador aceita JSON com lista, JSON com uma lista dentro de \`results\`, \`places\`, \`data\` ou \`items\`, um objeto único e JSON Lines (um objeto por linha). Ele reconhece os campos do scraper, incluindo \`title\`, \`link\`, \`cid\`, \`review_rating\` e \`review_count\`, além de aliases comuns.
+O importador aceita JSON com lista, JSON com uma lista dentro de results, places, data ou items, um objeto único e JSON Lines (um objeto por linha). Ele reconhece os campos do scraper, incluindo title, link, cid, review_rating e review_count, além de aliases comuns.
 
 Testes locais sem rede:
 
-\`\`\`bash
-python3 -m unittest discover -s tests -v
-\`\`\`
+    python3 -m unittest discover -s tests -v
 
 ## Configuração necessária
 
 Cadastre os secrets em **Settings → Secrets and variables → Actions** no repositório:
 
-- \`SUPABASE_URL\`: URL do projeto Supabase do LedsNet.
-- \`SUPABASE_SERVICE_ROLE_KEY\`: chave secreta de servidor do mesmo projeto. Nunca a exponha no frontend, logs ou commits.
+- **SUPABASE_URL**: URL do projeto Supabase do LedsNet.
+- **SUPABASE_SERVICE_ROLE_KEY**: chave secreta de servidor do mesmo projeto. Nunca a exponha no frontend, logs ou commits.
 
 Ao executar o workflow, informe um Firebase UID válido. O workflow atual usa esse UID como proprietário dos leads importados; antes de habilitar o recurso para todos os usuários, o backend deve validar que o UID enviado corresponde ao usuário autenticado que solicitou a busca.
 
