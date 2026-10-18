@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && mkdir -p dist/app && cp dist/app.html dist/app/index.html",
     "preview": "vite preview",
     "start": "tsx server.ts",
     "clean": "rm -rf dist server.js",
@@ -20,6 +20,7 @@
     "express": "^4.21.2",
     "firebase": "^13.0.0",
     "firebase-admin": "^14.5.0",
+    "jose": "^6.2.12",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",

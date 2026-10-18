@@ -1,4 +1,4 @@
-import { isFirebaseAdminInitialized } from './_lib/firebaseAdmin';
+import { isFirebaseConfigured, getFirebaseProjectId } from './_lib/firebaseAdmin';
 import { sendJsonResponse } from './_lib/httpHelper';
 
 export default async function handler(req: any, res: any) {
@@ -7,14 +7,16 @@ export default async function handler(req: any, res: any) {
   }
 
   const hasApiKey = Boolean(process.env.GEMINI_API_KEY);
-  const firebaseAdminReady = isFirebaseAdminInitialized();
+  const firebaseConfigured = isFirebaseConfigured();
+  const projectId = getFirebaseProjectId();
 
   return sendJsonResponse(res, 200, {
     status: 'ok',
     service: 'LedsNet API',
     runtime: 'Vercel Serverless Function',
     hasApiKey,
-    firebaseAdminReady,
+    firebaseConfigured,
+    projectId,
     timestamp: new Date().toISOString(),
   });
 }

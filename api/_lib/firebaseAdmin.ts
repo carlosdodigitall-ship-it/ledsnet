@@ -1,62 +1,48 @@
-import { cert, getApps as getAdminApps, initializeApp as initializeAdminApp, applicationDefault } from 'firebase-admin/app';
-import { getAuth as getAdminAuth, type DecodedIdToken } from 'firebase-admin/auth';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import fs from 'fs';
 import path from 'path';
 
-let firebaseAdminReady = false;
-
-export function initFirebaseAdmin(): boolean {
-  if (firebaseAdminReady) return true;
-  if (getAdminApps().length > 0) {
-    firebaseAdminReady = true;
-    return true;
-  }
-
-  try {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    if (serviceAccountJson) {
-      initializeAdminApp({ credential: cert(JSON.parse(serviceAccountJson)) });
-    } else {
-      let configProjectId = '';
-      try {
-        const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-        if (fs.existsSync(configPath)) {
-          const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-          configProjectId = cfg.projectId || '';
-        }
-      } catch {
-        // Ignora ausência do arquivo local de configuração
-      }
-
-      const projectId = process.env.FIREBASE_PROJECT_ID || configProjectId || 'gen-lang-client-0177432537';
-      initializeAdminApp({ credential: applicationDefault(), projectId });
-    }
-    firebaseAdminReady = getAdminApps().length > 0;
-    return firebaseAdminReady;
-  } catch (error) {
-    console.error('[Firebase Admin] Erro ao inicializar SDK admin:', error);
-    return false;
-  }
+export interface DecodedUserToken extends JWTPayload {
+  uid: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
 }
 
-export function isFirebaseAdminInitialized(): boolean {
-  if (getAdminApps().length > 0) return true;
-  return initFirebaseAdmin();
+// Conjunto de chaves públicas oficiais do Google Identity para verificação de tokens Firebase Auth
+const GOOGLE_JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+);
+
+export function getFirebaseProjectId(): string {
+  if (process.env.FIREBASE_PROJECT_ID) {
+    return process.env.FIREBASE_PROJECT_ID;
+  }
+  try {
+    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (cfg.projectId) return cfg.projectId;
+    }
+  } catch {
+    // Arquivo não disponível no ambiente serverless isolado
+  }
+  return 'gen-lang-client-0177432537';
+}
+
+export function isFirebaseConfigured(): boolean {
+  return Boolean(getFirebaseProjectId());
+}
+
+export function initFirebaseAdmin(): boolean {
+  return isFirebaseConfigured();
 }
 
 export async function verifyFirebaseUserToken(authHeader: string | undefined): Promise<{
-  user: DecodedIdToken | null;
+  user: DecodedUserToken | null;
   error?: string;
   status?: number;
 }> {
-  if (!isFirebaseAdminInitialized()) {
-    return {
-      user: null,
-      error: 'Autenticação do servidor não configurada. Configure as credenciais do Firebase Admin.',
-      status: 503,
-    };
-  }
-
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   if (!token) {
     return {
@@ -66,21 +52,46 @@ export async function verifyFirebaseUserToken(authHeader: string | undefined): P
     };
   }
 
+  const projectId = getFirebaseProjectId();
+  if (!projectId) {
+    return {
+      user: null,
+      error: 'Autenticação do servidor não configurada. Configure o FIREBASE_PROJECT_ID.',
+      status: 503,
+    };
+  }
+
   try {
-    const decoded: DecodedIdToken = await getAdminAuth().verifyIdToken(token);
-    if (process.env.REQUIRE_EMAIL_VERIFIED === 'true' && decoded.email_verified !== true) {
+    const { payload } = await jwtVerify(token, GOOGLE_JWKS, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+    });
+
+    const user: DecodedUserToken = {
+      ...payload,
+      uid: String(payload.sub || ''),
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+      email_verified: Boolean(payload.email_verified),
+      name: typeof payload.name === 'string' ? payload.name : undefined,
+    };
+
+    if (process.env.REQUIRE_EMAIL_VERIFIED === 'true' && user.email_verified !== true) {
       return {
         user: null,
         error: 'Confirme seu e-mail antes de executar esta ação.',
         status: 403,
       };
     }
-    return { user: decoded };
+
+    return { user };
   } catch (err: any) {
-    console.warn('[Firebase Auth] Erro ao validar token:', err?.message);
+    // Não expor dados confidenciais ou segredos
+    const isExpired = err?.code === 'ERR_JWT_EXPIRED';
     return {
       user: null,
-      error: 'Sua sessão expirou ou não é válida. Entre novamente.',
+      error: isExpired
+        ? 'Sua sessão expirou. Entre novamente.'
+        : 'Sua sessão não é válida. Entre novamente.',
       status: 401,
     };
   }

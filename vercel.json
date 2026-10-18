@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
+  "cleanUrls": false,
   "framework": "vite",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/entrar", "destination": "/app.html" },
     { "source": "/criar-conta", "destination": "/app.html" },
     { "source": "/verificar-email", "destination": "/app.html" },
