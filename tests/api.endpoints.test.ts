@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import healthHandler from '../api/health';
-import searchHandler from '../api/leads/search';
-import captureHandler from '../api/leads/capture';
-import { searchLeadsWithGemini } from '../api/_lib/geminiSearch';
+import healthHandler from '../api/health.js';
+import searchHandler from '../api/leads/search.js';
+import captureHandler from '../api/leads/capture.js';
+import { searchLeadsWithGemini } from '../api/_lib/geminiSearch.js';
 
 function createMockReq(overrides: Record<string, any> = {}) {
   return {

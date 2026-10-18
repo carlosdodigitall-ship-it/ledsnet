@@ -1,5 +1,5 @@
-import { isFirebaseConfigured, getFirebaseProjectId } from './_lib/firebaseAdmin';
-import { sendJsonResponse } from './_lib/httpHelper';
+import { isFirebaseConfigured, getFirebaseProjectId } from './_lib/firebaseAdmin.js';
+import { sendJsonResponse } from './_lib/httpHelper.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {

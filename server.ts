@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import healthHandler from './api/health';
-import searchHandler from './api/leads/search';
-import captureHandler from './api/leads/capture';
-import { initFirebaseAdmin } from './api/_lib/firebaseAdmin';
+import healthHandler from './api/health.js';
+import searchHandler from './api/leads/search.js';
+import captureHandler from './api/leads/capture.js';
+import { initFirebaseAdmin } from './api/_lib/firebaseAdmin.js';
 
 dotenv.config();
 

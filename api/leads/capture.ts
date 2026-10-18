@@ -1,5 +1,5 @@
-import { processLeadCapture } from '../_lib/leadCapture';
-import { parseRequestBody, sendJsonResponse } from '../_lib/httpHelper';
+import { processLeadCapture } from '../_lib/leadCapture.js';
+import { parseRequestBody, sendJsonResponse } from '../_lib/httpHelper.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {

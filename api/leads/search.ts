@@ -1,6 +1,6 @@
-import { verifyFirebaseUserToken } from '../_lib/firebaseAdmin';
-import { searchLeadsWithGemini } from '../_lib/geminiSearch';
-import { parseRequestBody, sendJsonResponse } from '../_lib/httpHelper';
+import { verifyFirebaseUserToken } from '../_lib/firebaseAdmin.js';
+import { searchLeadsWithGemini } from '../_lib/geminiSearch.js';
+import { parseRequestBody, sendJsonResponse } from '../_lib/httpHelper.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
