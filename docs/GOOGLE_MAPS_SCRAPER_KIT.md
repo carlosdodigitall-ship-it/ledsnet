@@ -53,3 +53,21 @@ Ao executar o workflow, informe um Firebase UID válido. O workflow atual usa es
 - O projeto original alerta que o Google Maps pode limitar ou bloquear temporariamente tráfego automatizado. Comece com profundidade baixa e uma busca por vez.
 - Os resultados devem ser verificados antes do contato. Respeite os termos aplicáveis, a LGPD, a finalidade e a base legal para tratamento de dados pessoais e solicitações de não contato.
 - E-mails e telefones não são garantidos para cada empresa.
+
+## Estado real de deploy (não marcar como produção ainda)
+
+A validação do PR identificou dois bloqueios externos/de integração:
+
+- O CI falhou na checagem TypeScript em `src/server/scraperRoutes.ts`; o ajuste de tipo já foi enviado no commit `880dc9c`. A próxima execução precisa confirmar que `npm run lint` e `npm run build` passam.
+- Os checks Vercel associados ao repositório retornaram falha por limite de builds do workspace (`build-rate-limit`). Isso precisa ser liberado no painel Vercel; não é um erro corrigível pelo código do scraper.
+
+O deploy estático atual de Vite, por si só, não comprova que as rotas Express `/api/*` estejam publicadas como funções serverless. Antes de anunciar a aplicação como pronta, validar um deploy de preview com login Firebase, `/api/health`, busca autenticada e persistência real. Não considerar o scraper conectado apenas porque o frontend compila.
+
+### Variáveis privadas a conferir no ambiente de servidor
+
+- `FIREBASE_SERVICE_ACCOUNT_KEY` (credencial JSON de servidor, nunca no frontend)
+- `SCRAPER_API_URL` e `SCRAPER_API_KEY` (somente se for usar o serviço compatível com o cliente de scraper já existente)
+- `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (para a integração Supabase/importador)
+
+Os nomes devem coincidir com o código e o ambiente efetivamente implantado. Nunca commitar valores secretos nem colocá-los em `VITE_*`.
+
