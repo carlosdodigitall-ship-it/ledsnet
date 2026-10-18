@@ -18,23 +18,23 @@ export interface ScoreBreakdown {
 export interface Lead {
   id: string;
   // Campos normalizados do Firestore
-  nome: string;
-  endereco: string;
-  telefone: string; // Formato E.164 sem o +
+  nome?: string;
+  endereco?: string;
+  telefone?: string; // Formato E.164 sem o +
   place_id?: string;
   placeId?: string;
-  nota: number;
-  numeroAvaliacoes: number;
+  nota?: number;
+  numeroAvaliacoes?: number;
   site?: string | null;
-  ramo: string;
-  regiao: string;
-  score: number;
+  ramo?: string;
+  regiao?: string;
+  score?: number;
   status: LeadStatus;
   motivoPerda?: string | null;
   proximoContato?: string | null;
-  origem: 'places' | 'formulario' | 'importacao';
-  criadoEm: string;
-  atualizadoEm: string;
+  origem?: 'places' | 'formulario' | 'importacao';
+  criadoEm?: string;
+  atualizadoEm?: string;
 
   // Aliases compatíveis com os componentes visuais
   name?: string;
@@ -63,9 +63,9 @@ export interface Lead {
 export interface Interaction {
   id: string;
   leadId: string;
-  tipo: 'mensagem_enviada' | 'resposta' | 'anotacao';
-  conteudo: string;
-  criadoEm: string;
+  tipo?: 'mensagem_enviada' | 'resposta' | 'anotacao';
+  conteudo?: string;
+  criadoEm?: string;
 
   // Aliases
   type?: 'mensagem_enviada' | 'resposta' | 'anotacao' | 'whatsapp' | 'call' | 'note' | 'status_change';
@@ -84,8 +84,8 @@ export interface Task {
 
 export interface MessageTemplate {
   id: string;
-  titulo: string;
-  texto: string; // Suporta variáveis {nome}, {empresa} e {bairro}
+  titulo?: string;
+  texto?: string; // Suporta variáveis {nome}, {empresa} e {bairro}
 
   // Aliases
   title?: string;
