@@ -36,6 +36,7 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
   qualificado: 'Qualificado',
   convertido: 'Convertido',
   perdido: 'Perdido',
+  nao_contatar: 'Não contatar',
 };
 
 export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
