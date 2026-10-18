@@ -621,8 +621,18 @@ app.put('/api/tasks', requireAuth, async (req: Request, res: Response) => {
 app.get('/api/interactions', requireAuth, async (req: Request, res: Response) => {
   try {
     const snapshot = await userCollection(req, 'interactions').get();
-    const interactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    interactions.sort((a: any, b: any) => new Date(b.timestamp || b.criadoEm || 0).getTime() - new Date(a.timestamp || a.criadoEm || 0).getTime());
+    const interactions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const legacyType: Record<string, string> = { mensagem_enviada: 'whatsapp', resposta: 'note', anotacao: 'note' };
+      return {
+        ...data,
+        id: doc.id,
+        type: data.type || legacyType[data.tipo] || 'note',
+        content: data.content || data.conteudo || '',
+        timestamp: data.timestamp || data.criadoEm || new Date().toISOString(),
+      };
+    });
+    interactions.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     res.json({ success: true, interactions });
   } catch (err: any) { res.status(500).json({ error: 'Erro ao carregar interações', details: err?.message }); }
 });
