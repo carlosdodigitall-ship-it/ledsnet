@@ -64,12 +64,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     qualificado: leads.filter((l) => l.status === 'qualificado').length,
     convertido: leads.filter((l) => l.status === 'convertido').length,
     perdido: leads.filter((l) => l.status === 'perdido').length,
+    nao_contatar: leads.filter((l) => l.status === 'nao_contatar').length,
   };
 
   // Contagem por Segmento
   const segmentMap: Record<string, number> = {};
   leads.forEach((l) => {
-    segmentMap[l.segment] = (segmentMap[l.segment] || 0) + 1;
+    const segment = l.segment || l.ramo || 'Geral';
+    segmentMap[segment] = (segmentMap[segment] || 0) + 1;
   });
   const topSegments = Object.entries(segmentMap)
     .sort((a, b) => b[1] - a[1])
