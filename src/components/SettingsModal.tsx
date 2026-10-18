@@ -82,7 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 Configurações & Segurança
               </h3>
               <p className="text-xs text-slate-400">
-                Chave de acesso privado, backups e templates de abordagem
+                Conta Firebase, backups e templates de abordagem
               </p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            Acesso & Link Privado
+            Conta Firebase
           </button>
           <button
             onClick={() => setActiveTab('templates')}
