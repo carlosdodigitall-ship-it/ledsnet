@@ -196,7 +196,7 @@ export async function searchLeadsWithGemini({
           address: addressFromTags(tags, center.display_name),
           city: location.trim(),
           phone,
-          whatsapp: phone.replace(/\\D/g, ''),
+          whatsapp: phone.replace(/\D/g, ''),
           website,
           mapsUrl: coords
             ? `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lon}#map=18/${coords.lat}/${coords.lon}`
