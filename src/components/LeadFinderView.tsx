@@ -29,6 +29,8 @@ interface LeadFinderViewProps {
   onOpenScoreExplanation: (lead: Lead) => void;
 }
 
+const jobResultsFallback = (payload: any): unknown => payload?.results ?? payload?.data ?? payload?.items ?? payload?.job?.results ?? payload?.output ?? payload?.result;
+
 const REGION_PRESETS = [
   'Salvador - Pituba e Região',
   'Salvador - Barra e Graça',
