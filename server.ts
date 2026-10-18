@@ -2,7 +2,6 @@ import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
 import { getAuth } from 'firebase-admin/auth';
 import { getApps } from 'firebase-admin/app';
 import { serverDb, getServerFirestore } from './src/server/db.js';
@@ -25,22 +24,8 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolutio
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'ledsnet-prod';
 
-// Chave do Google Places API (opcional, com fallback resiliente para Gemini 3.8 Flash Maps Grounding)
+// Chave do Google Places API. Sem uma fonte real configurada, a busca retorna indisponibilidade.
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || '';
-
-// Inicialização do Google GenAI SDK (Server-Side)
-const apiKey = process.env.GEMINI_API_KEY || '';
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-  ai = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
 
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/scraper', scraperRouter);
@@ -84,7 +69,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'LedsNet API',
-    hasGemini: !!apiKey,
     hasPlacesKey: !!GOOGLE_PLACES_API_KEY,
     hasEvolutionKey: !!EVOLUTION_API_KEY,
     evolutionInstance: EVOLUTION_INSTANCE,
@@ -689,50 +673,6 @@ app.get('/landing', (_req: Request, res: Response) => {
 app.get('/vendas', (_req: Request, res: Response) => {
   res.sendFile(path.resolve(__dirname, 'landing.html'));
 });
-
-// Gerador representativo de fallback quando apis externas atingem cota
-function generateRepresentativePlaces(segment: string, location: string, radiusKm: number) {
-  const isSalvador = location.toLowerCase().includes('salvador');
-  const neighborhoods = isSalvador
-    ? ['Pituba', 'Barra', 'Caminho das Árvores', 'Rio Vermelho', 'Itaigara', 'Brotas', 'Ondina']
-    : ['Centro', 'Distrito Empresarial', 'Jardins', 'Bairro Comercial', 'Setor Sul'];
-
-  const templatesBySegment: Record<string, string[]> = {
-    'Condomínios': ['Residencial Torres do Parque', 'Condomínio Solar da Colina', 'Edifício Costa Azul', 'Condomínio Reserva Bela Vista', 'Residencial Alameda das Flores'],
-    'Restaurantes': ['Cantina & Grill Villa', 'Bistrô Mar Azul', 'Churrascaria Fogo Tropical', 'Restaurante Sabor & Prosa', 'Pizzaria Massa Nobre'],
-    'Clínicas': ['Clínica Médica e Diagnóstico Saúde', 'Centro Integrado de Fisioterapia', 'Consultórios OdontoExcel', 'Clínica Dermatológica DermaVida', 'Espaço Médico Bem Estar'],
-    'Lojas': ['Lojas Conforto Lar', 'Varejo Moda Brasil', 'Mega Centro Automotivo', 'Distribuidora União', 'Boutique Elegance'],
-    'Climatização e Refrigeração': ['Hotel & Pousada Mar Dourado', 'Supermercado Central de Carnes', 'Laboratório Vital Diagnósticos', 'Padaria & Confeitaria Imperial', 'Empresarial Executive Center']
-  };
-
-  const names = templatesBySegment[segment] || [
-    `Comercial ${segment} Premier`,
-    `Grupo ${segment} Central`,
-    `Espaço ${segment} & Serviços`,
-    `Empresarial ${location.split(',')[0]}`,
-    `Centro Operacional ${segment}`
-  ];
-
-  const ddd = isSalvador ? '71' : '11';
-
-  return names.map((name, i) => {
-    const neighborhood = neighborhoods[i % neighborhoods.length];
-    const hasSite = i % 3 === 0;
-    const rating = [3.4, 3.8, 4.1, 4.5, 3.6][i % 5];
-    const reviewCount = [7, 19, 34, 82, 12][i % 5];
-    const streetNumber = 100 + i * 140;
-
-    return {
-      name,
-      address: `Av. Principal, ${streetNumber}, ${neighborhood}, ${location}`,
-      phone: `(${ddd}) 9${8000 + i * 123}-${1000 + i * 45}`,
-      website: hasSite ? `https://${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br` : null,
-      rating,
-      reviewCount,
-      placeId: `place_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_${i}`
-    };
-  });
-}
 
 async function setupServer() {
   if (process.env.NODE_ENV !== 'production') {
