@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Importa resultados JSON/JSONL do gosom/google-maps-scraper no Supabase REST API."""
+"""Importa resultados JSON/JSONL do Google Maps Scraper para o Cloud Firestore."""
+import hashlib
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 
 
@@ -32,14 +31,11 @@ def read_payload(path):
             try:
                 payload.append(json.loads(line))
             except json.JSONDecodeError as exc:
-                raise ValueError(
-                    f"JSON/JSONL inválido na linha {line_number}: {exc.msg}"
-                ) from exc
+                raise ValueError(f"JSON/JSONL inválido na linha {line_number}: {exc.msg}") from exc
     if isinstance(payload, dict):
         for key in ("results", "places", "data", "items"):
             if isinstance(payload.get(key), list):
                 return payload[key]
-        # Um único registro também é aceito.
         return [payload]
     if not isinstance(payload, list):
         raise ValueError("Formato inesperado: esperava uma lista, objeto ou JSONL.")
@@ -63,19 +59,18 @@ def normalize_emails(raw):
 
 
 def load_rows(path, user_id):
+    """Normaliza os aliases do scraper e remove duplicatas do mesmo arquivo."""
     payload = read_payload(path)
     rows_by_place = {}
     search_query = os.environ.get("SEARCH_QUERY", "").strip() or None
+    now = datetime.now(timezone.utc).isoformat()
     for item in payload:
         if not isinstance(item, dict):
             continue
-
-        # O scraper gosom usa "title", "link" e "review_rating" em seus resultados.
         name = value(item, "name", "title", "company")
         place_id = value(item, "place_id", "placeId", "cid", "data_id", "link", "url")
         if not name or not place_id:
             continue
-
         rating_raw = value(item, "rating", "review_rating")
         try:
             rating = float(rating_raw) if rating_raw is not None else None
@@ -83,87 +78,101 @@ def load_rows(path, user_id):
             rating = None
         if rating is not None and not 0 <= rating <= 5:
             rating = None
-
-        review_raw = value(
-            item, "review_count", "reviews_count", "reviews", "user_ratings_total"
-        )
+        review_raw = value(item, "review_count", "reviews_count", "reviews", "user_ratings_total")
         try:
             reviews = int(review_raw) if review_raw is not None else None
         except (TypeError, ValueError):
             reviews = None
-
         category = value(item, "category", "categories", "type")
         if isinstance(category, list):
             category = ", ".join(str(part) for part in category if part)
         elif category is not None:
             category = str(category)
-
+        address = value(item, "address", "complete_address", "formatted_address")
+        phone = value(item, "phone", "phone_number")
+        website = value(item, "website", "site", "url_website")
+        emails = normalize_emails(value(item, "emails", "email"))
         row = {
+            # Legacy snake_case aliases are retained for the existing offline tests/import clients.
             "user_id": user_id,
+            "ownerId": user_id,
             "place_id": str(place_id),
+            "placeId": str(place_id),
             "name": str(name).strip(),
-            "address": value(item, "address", "complete_address", "formatted_address"),
-            "phone": value(item, "phone", "phone_number"),
-            "website": value(item, "website", "site", "url_website"),
-            "emails": normalize_emails(value(item, "emails", "email")),
+            "nome": str(name).strip(),
+            "address": address,
+            "endereco": address,
+            "phone": phone,
+            "telefone": phone,
+            "website": website,
+            "site": website,
+            "emails": emails,
+            "email": emails[0] if emails else None,
             "rating": rating,
+            "nota": rating,
             "review_count": reviews,
+            "numeroAvaliacoes": reviews,
             "category": category,
+            "ramo": category,
             "region": search_query,
+            "regiao": search_query,
+            "score": 0,
+            "status": "novo",
             "source": "google_maps_scraper",
+            "origem": "google_maps_scraper",
             "raw_data": item,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "criadoEm": now,
+            "atualizadoEm": now,
         }
-        # Evita duplicatas dentro do mesmo arquivo antes do upsert no banco.
         rows_by_place[row["place_id"]] = row
     return list(rows_by_place.values())
+
+
+def firestore_document_id(place_id):
+    # Document IDs cannot contain '/', and hashes avoid oversized IDs from Maps URLs.
+    return hashlib.sha256(str(place_id).encode("utf-8")).hexdigest()
 
 
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("Uso: import_scraper_results.py caminho/resultados.json")
-    base = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     user_id = os.environ.get("FIREBASE_UID", "").strip()
-    if not base.startswith("https://") or not key or not user_id:
-        raise SystemExit(
-            "SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e FIREBASE_UID são obrigatórios."
-        )
+    project_id = os.environ.get("FIREBASE_PROJECT_ID", "").strip()
+    database_id = os.environ.get("FIRESTORE_DATABASE_ID", "(default)").strip() or "(default)"
+    raw_credentials = os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY", "").strip()
+    if not user_id or not project_id or not raw_credentials:
+        raise SystemExit("FIREBASE_UID, FIREBASE_PROJECT_ID e FIREBASE_SERVICE_ACCOUNT_KEY são obrigatórios.")
+    try:
+        service_account = json.loads(raw_credentials)
+    except json.JSONDecodeError as exc:
+        raise SystemExit("FIREBASE_SERVICE_ACCOUNT_KEY precisa conter JSON válido.") from exc
 
     rows = load_rows(sys.argv[1], user_id)
     if not rows:
         print("Nenhum resultado válido para importar; não foram criados leads fictícios.")
         return
 
-    endpoint = base + "/rest/v1/ledsnet_leads?on_conflict=user_id%2Cplace_id"
+    try:
+        from google.cloud import firestore
+        from google.oauth2 import service_account
+    except ImportError as exc:
+        raise SystemExit("Dependência ausente. Instale google-cloud-firestore antes da importação.") from exc
+
+    credentials = service_account.Credentials.from_service_account_info(service_account)
+    client = firestore.Client(project=project_id, credentials=credentials, database=database_id)
+    collection = client.collection("users").document(user_id).collection("leads")
     saved = 0
-    for start in range(0, len(rows), 100):
-        batch = rows[start : start + 100]
-        request = urllib.request.Request(
-            endpoint,
-            data=json.dumps(batch, ensure_ascii=False).encode("utf-8"),
-            headers={
-                "apikey": key,
-                "Authorization": "Bearer " + key,
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates,return=minimal",
-            },
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=45) as response:
-                if response.status not in (200, 201, 204):
-                    raise RuntimeError("Supabase respondeu HTTP " + str(response.status))
-                saved += len(batch)
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise SystemExit(f"Supabase HTTP {exc.code}: {body[:1200]}") from exc
-        except urllib.error.URLError as exc:
-            raise SystemExit(f"Falha de conexão com Supabase: {exc.reason}") from exc
-    print(
-        f"Importação concluída: {saved} leads enviados para Supabase "
-        f"(UID proprietário: {user_id})."
-    )
+    for row in rows:
+        ref = collection.document(firestore_document_id(row["place_id"]))
+        existing = ref.get()
+        if existing.exists:
+            row["id"] = existing.id
+            row["criadoEm"] = (existing.to_dict() or {}).get("criadoEm", row["criadoEm"])
+        else:
+            row["id"] = ref.id
+        ref.set(row, merge=True)
+        saved += 1
+    print(f"Importação concluída: {saved} leads gravados no Cloud Firestore (UID proprietário: {user_id}).")
 
 
 if __name__ == "__main__":
