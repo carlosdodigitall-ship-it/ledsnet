@@ -3,8 +3,6 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { api } from './services/api';
 import {
-  setStoredAccessKey,
-  clearStoredAccessKey,
   exportLeadsToCSV,
 } from './services/storage';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
@@ -102,16 +100,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    clearStoredAccessKey();
     await signOut(auth);
     setAccessKey('');
     setIsUnlocked(false);
   };
 
-  const handleUpdateKey = (newKey: string) => {
-    setStoredAccessKey(newKey);
-    setAccessKey(newKey);
-  };
+
 
   // Ações de Leads
   const handleAddLeadToFunnel = async (lead: Lead) => {
@@ -399,8 +393,6 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        accessKey={accessKey}
-        onUpdateKey={handleUpdateKey}
         onLogout={handleLogout}
         onExportCSV={() => exportLeadsToCSV(leads)}
         leads={leads}
