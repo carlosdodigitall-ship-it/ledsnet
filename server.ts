@@ -655,7 +655,7 @@ app.put('/api/templates', requireAuth, async (req: Request, res: Response) => {
 app.get('/api/stats', requireAuth, async (req: Request, res: Response) => {
   try {
     const snapshot = await userLeads(req).get();
-    const leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const leads: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const today = new Date().toISOString().split('T')[0];
 
     const totalLeads = leads.length;
