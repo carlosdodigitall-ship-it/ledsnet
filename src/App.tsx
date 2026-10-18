@@ -5,13 +5,6 @@ import { api } from './services/api';
 import {
   setStoredAccessKey,
   clearStoredAccessKey,
-  saveLeads,
-  loadTasks,
-  saveTasks,
-  loadInteractions,
-  saveInteractions,
-  loadTemplates,
-  saveTemplates,
   exportLeadsToCSV,
 } from './services/storage';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
@@ -60,40 +53,46 @@ export default function App() {
         return;
       }
       setLeads([]);
-      api.getLeads()
-        .then((remoteLeads: Lead[]) => {
-          setLeads(remoteLeads);
-          saveLeads(remoteLeads);
+      Promise.all([api.getLeads(), api.getTasks(), api.getInteractions(), api.getTemplates()])
+        .then(([remoteLeads, remoteTasks, remoteInteractions, remoteTemplates]) => {
+          setLeads(remoteLeads as Lead[]);
+          setTasks(remoteTasks as Task[]);
+          setInteractions(remoteInteractions as Interaction[]);
+          setTemplates(remoteTemplates as MessageTemplate[]);
         })
         .catch((error) => {
-          console.error('Falha ao sincronizar leads com Firestore:', error);
+          console.error('Falha ao carregar dados do Firebase:', error);
         });
     });
-    setTasks(loadTasks());
-    setInteractions(loadInteractions());
-    setTemplates(loadTemplates());
     return unsubscribe;
   }, []);
 
   // Sincronização automática com localStorage
   const updateLeads = (newLeads: Lead[]) => {
     setLeads(newLeads);
-    saveLeads(newLeads);
   };
 
   const updateTasks = (newTasks: Task[]) => {
     setTasks(newTasks);
-    saveTasks(newTasks);
+    api.replaceTasks(newTasks).catch((error) => {
+      console.error('Falha ao persistir tarefas no Firestore:', error);
+      alert('Não foi possível salvar as tarefas no Firebase. Confira a conexão e tente novamente.');
+    });
   };
 
   const updateInteractions = (newInteractions: Interaction[]) => {
     setInteractions(newInteractions);
-    saveInteractions(newInteractions);
+    api.replaceInteractions(newInteractions).catch((error) => {
+      console.error('Falha ao persistir interações no Firestore:', error);
+    });
   };
 
   const updateTemplates = (newTemplates: MessageTemplate[]) => {
     setTemplates(newTemplates);
-    saveTemplates(newTemplates);
+    api.replaceTemplates(newTemplates).catch((error) => {
+      console.error('Falha ao persistir modelos no Firestore:', error);
+      alert('Não foi possível salvar os modelos no Firebase.');
+    });
   };
 
   // Autenticação real por Firebase Authentication.
