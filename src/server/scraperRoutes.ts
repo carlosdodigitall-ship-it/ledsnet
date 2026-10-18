@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getAuth } from 'firebase-admin/auth';
-import { getApps } from 'firebase-admin/app';
-import { getServerFirestore } from './db.js';
+import { getServerFirestore, getServerFirebaseApp } from './db.js';
 import { z } from 'zod';
 import { scraperClient } from './scraperClient.js';
 
@@ -15,8 +14,7 @@ async function requireFirebaseUser(req: AuthRequest, res: Response, next: NextFu
     const header = req.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : '';
     if (!token) return res.status(401).json({ error: 'Envie um Firebase ID token em Authorization: Bearer.' });
-    const app = getApps()[0];
-    if (!app) return res.status(503).json({ error: 'Firebase Admin não está configurado.' });
+    const app = getServerFirebaseApp();
     const decoded = await getAuth(app).verifyIdToken(token);
     req.firebaseUid = decoded.uid;
     next();
