@@ -7,6 +7,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getApps } from 'firebase-admin/app';
 import { serverDb, getServerFirestore } from './src/server/db.js';
 import scraperRouter from './src/server/scraperRoutes.js';
+import { isSupabaseLeadsConfigured, listSupabaseLeads, getSupabaseLeadById, createSupabaseLead, updateSupabaseLead, deleteSupabaseLead } from './src/server/supabaseLeads.js';
 
 dotenv.config();
 
@@ -277,6 +278,11 @@ function userLeads(req: Request) {
 app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
     const { status, ramo, regiao, search } = req.query as any;
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const leads = await listSupabaseLeads(uid, { status, ramo, regiao, search });
+      return res.json({ success: true, count: leads.length, leads });
+    }
     const snapshot = await userLeads(req).get();
     let leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if (status && status !== 'todos') leads = leads.filter((lead: any) => lead.status === status);
@@ -291,6 +297,12 @@ app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.get('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const lead = await getSupabaseLeadById(uid, req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
+      return res.json({ success: true, lead, interacoes: [] });
+    }
     const doc = await userLeads(req).doc(req.params.id).get();
     if (!doc.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
     res.json({ success: true, lead: { id: doc.id, ...doc.data() }, interacoes: [] });
@@ -306,6 +318,18 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
     const telefone = String(data.telefone || data.phone || '').trim();
     const email = String(data.email || '').trim();
     if (!nome) return res.status(400).json({ error: 'Nome da empresa é obrigatório.' });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      try {
+        const lead = await createSupabaseLead(uid, data);
+        return res.status(201).json({ success: true, lead });
+      } catch (error: any) {
+        if (String(error?.message || '').includes('HTTP 409')) {
+          return res.status(409).json({ error: 'Esta empresa já está salva na sua lista.' });
+        }
+        throw error;
+      }
+    }
     const collection = userLeads(req);
     if (data.place_id || data.placeId) {
       const placeId = String(data.place_id || data.placeId);
@@ -334,10 +358,18 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    const allowed = ['status', 'motivoPerda', 'proximoContato', 'nota', 'site', 'ramo', 'regiao', 'email', 'emails', 'telefone', 'phone', 'website', 'notes', 'nextFollowUpDate', 'nextFollowUpNote', 'score', 'address', 'endereco'];
+    if (isSupabaseLeadsConfigured()) {
+      const patch: Record<string, unknown> = {};
+      for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+      const updated = await updateSupabaseLead(uid, req.params.id, patch);
+      if (!updated) return res.status(404).json({ error: 'Lead não encontrado.' });
+      return res.json({ success: true, lead: updated });
+    }
     const ref = userLeads(req).doc(req.params.id);
     const existing = await ref.get();
     if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
-    const allowed = ['status', 'motivoPerda', 'proximoContato', 'nota', 'site', 'ramo', 'regiao', 'email', 'telefone', 'phone', 'website', 'notes', 'nextFollowUpDate', 'nextFollowUpNote'];
     const patch: Record<string, unknown> = {};
     for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
     patch.atualizadoEm = new Date().toISOString();
@@ -351,6 +383,13 @@ app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => 
 
 app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const lead = await getSupabaseLeadById(uid, req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
+      await deleteSupabaseLead(uid, req.params.id);
+      return res.json({ success: true, message: 'Lead removido da sua lista.' });
+    }
     const ref = userLeads(req).doc(req.params.id);
     const existing = await ref.get();
     if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
@@ -627,7 +666,10 @@ app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
 // KPIs do Dashboard
 app.get('/api/stats', requireAuth, async (_req: Request, res: Response) => {
   try {
-    const leads = await serverDb.getLeads();
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    const leads = isSupabaseLeadsConfigured()
+      ? await listSupabaseLeads(uid)
+      : await serverDb.getLeads();
     const today = new Date().toISOString().split('T')[0];
 
     const totalLeads = leads.length;
