@@ -609,7 +609,7 @@ app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
 });
 
 // KPIs do Dashboard
-app.get('/api/stats', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/stats', requireAuth, async (req: Request, res: Response) => {
   try {
     const uid = (req as FirebaseRequest).firebaseUid!;
     const leads = isSupabaseLeadsConfigured()
