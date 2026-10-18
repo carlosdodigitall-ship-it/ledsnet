@@ -65,7 +65,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Sincronização automática com localStorage
+  // Dados de negócio persistidos no Cloud Firestore por usuário
   const updateLeads = (newLeads: Lead[]) => {
     setLeads(newLeads);
   };
@@ -396,9 +396,40 @@ export default function App() {
         onLogout={handleLogout}
         onExportCSV={() => exportLeadsToCSV(leads)}
         leads={leads}
-        onImportBackup={(imported) => {
-          updateLeads(imported);
-          alert('Leads restaurados com sucesso!');
+        onImportBackup={async (imported) => {
+          let saved = 0;
+          let skipped = 0;
+          try {
+            for (const lead of imported) {
+              try {
+                await api.createLead({
+                  ...lead,
+                  nome: lead.name || lead.nome,
+                  name: lead.name || lead.nome,
+                  place_id: lead.placeId || lead.place_id || '',
+                  telefone: lead.phone || lead.telefone || '',
+                  phone: lead.phone || lead.telefone || '',
+                  endereco: lead.address || lead.endereco || '',
+                  site: lead.website || lead.site || null,
+                  website: lead.website || lead.site || null,
+                  ramo: lead.segment || lead.ramo || '',
+                  regiao: lead.city || lead.regiao || '',
+                  score: lead.opportunityScore || lead.score || 0,
+                });
+                saved += 1;
+              } catch (error: any) {
+                if (String(error?.message || '').toLowerCase().includes('já está salva')) {
+                  skipped += 1;
+                  continue;
+                }
+                throw error;
+              }
+            }
+            setLeads(await api.getLeads() as Lead[]);
+            alert(`Importação para Firebase concluída: ${saved} leads salvos, ${skipped} duplicados ignorados.`);
+          } catch (error: any) {
+            alert(error?.message || 'Falha ao importar o backup para o Firebase.');
+          }
         }}
         templates={templates}
         onUpdateTemplates={updateTemplates}
