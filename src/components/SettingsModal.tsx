@@ -13,6 +13,7 @@ import { MessageTemplate, Lead } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
+  accessKey: string;
   onClose: () => void;
   onLogout: () => void;
   onExportCSV: () => void;
@@ -24,6 +25,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
+  accessKey,
   onClose,
   onLogout,
   onExportCSV,
