@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
+    "strict": false,
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
-    "types": ["vite/client"],
     "lib": [
       "ES2022",
       "DOM",

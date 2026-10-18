@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './lib/firebase';
+import { api } from './services/api';
 import {
-  getStoredAccessKey,
   setStoredAccessKey,
   clearStoredAccessKey,
-  loadLeads,
   saveLeads,
   loadTasks,
   saveTasks,
@@ -12,7 +13,6 @@ import {
   loadTemplates,
   saveTemplates,
   exportLeadsToCSV,
-  DEFAULT_ACCESS_KEY,
 } from './services/storage';
 import { Lead, LeadStatus, Interaction, Task, MessageTemplate } from './types';
 import { Header } from './components/Header';
@@ -50,23 +50,29 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isManualLeadOpen, setIsManualLeadOpen] = useState(false);
 
-  // Inicialização
+  // Inicialização com sessão persistente do Firebase Authentication.
   useEffect(() => {
-    const key = getStoredAccessKey();
-    if (key) {
-      setAccessKey(key);
-      setIsUnlocked(true);
-    } else {
-      // Se não houver chave armazenada, abre com a demo pré-configurada
-      setAccessKey(DEFAULT_ACCESS_KEY);
-      setIsUnlocked(true);
-      setStoredAccessKey(DEFAULT_ACCESS_KEY);
-    }
-
-    setLeads(loadLeads());
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAccessKey(user?.email || '');
+      setIsUnlocked(!!user);
+      if (!user) {
+        setLeads([]);
+        return;
+      }
+      setLeads([]);
+      api.getLeads()
+        .then((remoteLeads: Lead[]) => {
+          setLeads(remoteLeads);
+          saveLeads(remoteLeads);
+        })
+        .catch((error) => {
+          console.error('Falha ao sincronizar leads com Firestore:', error);
+        });
+    });
     setTasks(loadTasks());
     setInteractions(loadInteractions());
     setTemplates(loadTemplates());
+    return unsubscribe;
   }, []);
 
   // Sincronização automática com localStorage
@@ -90,15 +96,15 @@ export default function App() {
     saveTemplates(newTemplates);
   };
 
-  // Autenticação por chave
-  const handleUnlock = (key: string) => {
-    setStoredAccessKey(key);
-    setAccessKey(key);
+  // Autenticação real por Firebase Authentication.
+  const handleUnlock = () => {
     setIsUnlocked(true);
+    setAccessKey(auth.currentUser?.email || '');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     clearStoredAccessKey();
+    await signOut(auth);
     setAccessKey('');
     setIsUnlocked(false);
   };
@@ -109,60 +115,89 @@ export default function App() {
   };
 
   // Ações de Leads
-  const handleAddLeadToFunnel = (lead: Lead) => {
-    // Evita duplicatas
+  const handleAddLeadToFunnel = async (lead: Lead) => {
     const alreadyExists = leads.some(
-      (l) => (lead.placeId && l.placeId === lead.placeId) || l.name.toLowerCase() === lead.name.toLowerCase()
+      (item) => ((lead.placeId || lead.place_id) && (item.placeId || item.place_id) === (lead.placeId || lead.place_id)) ||
+        (item.name || item.nome).toLowerCase() === (lead.name || lead.nome).toLowerCase()
     );
-
     if (alreadyExists) {
-      alert('Este lead já está no seu funil comercial.');
+      alert('Esta empresa já está na sua lista.');
       return;
     }
 
-    const updated = [lead, ...leads];
-    updateLeads(updated);
-
-    // Registra interação de importação
-    const newInt: Interaction = {
-      id: `int-${Date.now()}`,
-      leadId: lead.id,
-      type: 'note',
-      content: `Lead importado do Google Places para o funil (Opportunity Score: ${lead.opportunityScore}).`,
-      timestamp: new Date().toISOString(),
-    };
-    updateInteractions([newInt, ...interactions]);
+    try {
+      const response = await api.createLead({
+        ...lead,
+        nome: lead.name || lead.nome,
+        name: lead.name || lead.nome,
+        telefone: lead.phone || lead.telefone || '',
+        phone: lead.phone || lead.telefone || '',
+        email: lead.email || '',
+        place_id: lead.place_id || lead.placeId || '',
+        site: lead.website || lead.site || null,
+        website: lead.website || lead.site || null,
+        endereco: lead.address || lead.endereco || '',
+        ramo: lead.segment || lead.ramo,
+        regiao: lead.city || lead.regiao,
+        score: lead.opportunityScore || lead.score,
+      });
+      const savedLead = response.lead ? { ...lead, ...response.lead } as Lead : lead;
+      updateLeads([savedLead, ...leads]);
+      const newInt: Interaction = {
+        id: `int-${Date.now()}`,
+        leadId: savedLead.id,
+        type: 'note',
+        content: `Empresa salva no Firestore para o funil comercial (score: ${savedLead.opportunityScore || savedLead.score}).`,
+        timestamp: new Date().toISOString(),
+      };
+      updateInteractions([newInt, ...interactions]);
+    } catch (error: any) {
+      alert(error?.message || 'Não foi possível salvar a empresa no Firebase. Verifique a configuração do servidor.');
+    }
   };
 
-  const handleUpdateStatus = (leadId: string, newStatus: LeadStatus) => {
-    const updated = leads.map((l) => (l.id === leadId ? { ...l, status: newStatus, updatedAt: new Date().toISOString() } : l));
-    updateLeads(updated);
-
-    const leadName = leads.find((l) => l.id === leadId)?.name || 'Lead';
-    const newInt: Interaction = {
-      id: `int-${Date.now()}`,
-      leadId,
-      type: 'status_change',
-      content: `Status alterado para "${newStatus.toUpperCase()}".`,
-      timestamp: new Date().toISOString(),
-    };
-    updateInteractions([newInt, ...interactions]);
+  const handleUpdateStatus = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      await api.updateLead(leadId, { status: newStatus });
+      const updated = leads.map((l) => (l.id === leadId ? { ...l, status: newStatus, updatedAt: new Date().toISOString() } : l));
+      updateLeads(updated);
+      const newInt: Interaction = {
+        id: `int-${Date.now()}`, leadId, type: 'status_change',
+        content: `Status alterado para "${newStatus.toUpperCase()}".`,
+        timestamp: new Date().toISOString(),
+      };
+      updateInteractions([newInt, ...interactions]);
+    } catch (error: any) {
+      alert(error?.message || 'Não foi possível atualizar o status no Firebase.');
+    }
   };
 
-  const handleUpdateLead = (updatedLead: Lead) => {
-    const updated = leads.map((l) => (l.id === updatedLead.id ? updatedLead : l));
-    updateLeads(updated);
+  const handleUpdateLead = async (updatedLead: Lead) => {
+    try {
+      await api.updateLead(updatedLead.id, {
+        status: updatedLead.status, email: updatedLead.email,
+        telefone: updatedLead.phone || updatedLead.telefone,
+        site: updatedLead.website || updatedLead.site,
+        notes: updatedLead.notes, regiao: updatedLead.city || updatedLead.regiao,
+        ramo: updatedLead.segment || updatedLead.ramo,
+        nextFollowUpDate: updatedLead.nextFollowUpDate,
+        nextFollowUpNote: updatedLead.nextFollowUpNote,
+      });
+      updateLeads(leads.map((lead) => lead.id === updatedLead.id ? updatedLead : lead));
+    } catch (error: any) {
+      alert(error?.message || 'Não foi possível salvar as alterações no Firebase.');
+    }
   };
 
-  const handleDeleteLead = (leadId: string) => {
-    const updatedLeads = leads.filter((l) => l.id !== leadId);
-    updateLeads(updatedLeads);
-
-    const updatedTasks = tasks.filter((t) => t.leadId !== leadId);
-    updateTasks(updatedTasks);
-
-    const updatedInteractions = interactions.filter((i) => i.leadId !== leadId);
-    updateInteractions(updatedInteractions);
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      await api.deleteLead(leadId);
+      updateLeads(leads.filter((lead) => lead.id !== leadId));
+      updateTasks(tasks.filter((task) => task.leadId !== leadId));
+      updateInteractions(interactions.filter((interaction) => interaction.leadId !== leadId));
+    } catch (error: any) {
+      alert(error?.message || 'Não foi possível excluir a empresa do Firebase.');
+    }
   };
 
   const handleWhatsAppSent = (leadId: string, messageText: string) => {

@@ -2,8 +2,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
-import { serverDb } from './src/server/db.js';
+import { getAuth } from 'firebase-admin/auth';
+import { getApps } from 'firebase-admin/app';
+import { serverDb, getServerFirestore } from './src/server/db.js';
+import scraperRouter from './src/server/scraperRoutes.js';
+import { isSupabaseLeadsConfigured, listSupabaseLeads, getSupabaseLeadById, createSupabaseLead, updateSupabaseLead, deleteSupabaseLead } from './src/server/supabaseLeads.js';
 
 dotenv.config();
 
@@ -14,51 +17,37 @@ const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Configuração de Chave de Acesso Privada
-const ACCESS_KEY = process.env.ACCESS_KEY || 'LEDS-PRO-2026';
+const ACCESS_KEY = process.env.ACCESS_KEY || '';
 
 // Configurações da Evolution API
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://api.evolution.com';
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'ledsnet-prod';
 
-// Chave do Google Places API (opcional, com fallback resiliente para Gemini 3.8 Flash Maps Grounding)
+// Chave do Google Places API. Sem uma fonte real configurada, a busca retorna indisponibilidade.
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || '';
 
-// Inicialização do Google GenAI SDK (Server-Side)
-const apiKey = process.env.GEMINI_API_KEY || '';
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-  ai = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
-
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use('/api/scraper', scraperRouter);
 
 // ============================================================================
-// 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
+// 1. MIDDLEWARE DE AUTENTICAÇÃO FIREBASE (Zero-Trust)
 // ============================================================================
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const headerKey = req.headers['x-access-key'] as string;
-  const authHeader = req.headers['authorization'];
-  const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  const queryKey = req.query.key as string;
-
-  const providedKey = headerKey || bearerKey || queryKey;
-
-  if (!providedKey || providedKey !== ACCESS_KEY) {
-    return res.status(401).json({
-      error: 'Acesso negado: chave de acesso inválida ou ausente.',
-      message: 'Forneça a chave privada no cabeçalho x-access-key ou Authorization: Bearer <key>.'
-    });
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return res.status(401).json({ error: 'Sessão Firebase ausente. Entre novamente na plataforma.' });
   }
-
-  next();
+  try {
+    const app = getApps()[0];
+    if (!app) return res.status(503).json({ error: 'Firebase Admin não está inicializado.' });
+    const decoded = await getAuth(app).verifyIdToken(token);
+    (req as Request & { firebaseUid?: string }).firebaseUid = decoded.uid;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Sessão Firebase inválida ou expirada. Entre novamente.' });
+  }
 }
 
 // Endpoint para validação da chave de acesso no login do painel
@@ -80,7 +69,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'LedsNet API',
-    hasGemini: !!apiKey,
     hasPlacesKey: !!GOOGLE_PLACES_API_KEY,
     hasEvolutionKey: !!EVOLUTION_API_KEY,
     evolutionInstance: EVOLUTION_INSTANCE,
@@ -114,8 +102,8 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
             name: p.name,
             address: p.formatted_address,
             placeId: p.place_id,
-            rating: p.rating || 3.8,
-            reviewCount: p.user_ratings_total || 5,
+            rating: p.rating ?? null,
+            reviewCount: p.user_ratings_total ?? null,
             website: null,
             phone: null,
             openNow: p.opening_hours?.open_now ?? true
@@ -128,95 +116,59 @@ app.post('/api/leads/search', requireAuth, async (req: Request, res: Response) =
       }
     }
 
-    // 2. Se não obteve resultados ou não há chave do Places, usa Gemini 3.8 Flash com Maps Grounding
-    if (rawPlaces.length === 0 && ai) {
-      try {
-        const prompt = `Você é o buscador inteligente de negócios locais do LedsNet.
-Encontre negócios e estabelecimentos comerciais reais do ramo de "${segment}" localizados na região de "${location}" (raio aproximado de ${radiusKm}km).
-Para cada negócio encontrado, forneça os dados reais e precisos:
-1. Nome da empresa/estabelecimento
-2. Endereço completo
-3. Telefone comercial ou celular (DDD + 8 ou 9 dígitos)
-4. Nota média no Google Maps (rating)
-5. Quantidade de avaliações (reviewCount)
-6. Website oficial (ou null se não tiver site próprio)
-7. ID único ou identificador do local no Google Maps (placeId)
-
-Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo um array de objetos:
-{
-  "places": [
-    {
-      "name": "Nome",
-      "address": "Endereço, Bairro, Cidade - UF",
-      "phone": "(71) 98888-0000",
-      "rating": 3.8,
-      "reviewCount": 14,
-      "website": null,
-      "placeId": "ChIJ..."
-    }
-  ]
-}`;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        });
-
-        const text = response.text || '{}';
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed.places)) {
-          rawPlaces = parsed.places;
-        }
-      } catch (aiErr: any) {
-        if (aiErr?.status === 429 || aiErr?.message?.includes('429') || aiErr?.message?.includes('quota')) {
-          console.warn('[Gemini Search] Cota atingida, utilizando gerador de amostras representativas.');
-        } else {
-          console.warn('[Gemini Search] Erro inesperado:', aiErr);
-        }
-      }
-    }
-
-    // 3. Fallback de dados representativos para garantir continuidade se APIs estiverem sem cota
+    // Não usa texto gerado por LLM como fonte de empresas reais. Sem Google Places,
+    // a busca real deve ser executada pelo worker de scraping, não por dados inventados.
+    // Não inventa estabelecimentos quando as fontes reais falham.
     if (rawPlaces.length === 0) {
-      rawPlaces = generateRepresentativePlaces(segment, location, radiusKm);
+      return res.status(503).json({
+        error: 'Nenhuma fonte real de pesquisa respondeu. Configure GOOGLE_PLACES_API_KEY ou execute o workflow de scraping do LedsNet.',
+        sourceUnavailable: true,
+      });
     }
 
     // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
+    const userId = (req as FirebaseRequest).firebaseUid!;
+    const existingSupabaseLeads = isSupabaseLeadsConfigured()
+      ? await listSupabaseLeads(userId)
+      : null;
     const processedLeads = [];
     for (let i = 0; i < rawPlaces.length; i++) {
       const p = rawPlaces[i];
       const placeId = p.placeId || `place_${Date.now()}_${i}`;
 
-      // Verificação de duplicados no banco
-      const existingLead = await serverDb.findLeadByPlaceId(placeId);
+      // Verifica duplicados no armazenamento ativo, sempre dentro do usuário autenticado.
+      const existingLead = existingSupabaseLeads
+        ? existingSupabaseLeads.find((lead: any) => lead.place_id === placeId)
+        : await serverDb.findLeadByPlaceId(placeId);
       const isDuplicate = !!existingLead;
 
-      // Limpeza de telefone no padrão E.164 sem o + (ex: 5571999998888)
-      let rawPhone = p.phone || '(71) 98888-0000';
+      // Normaliza somente dados existentes; nunca inventa telefone, nota ou avaliações.
+      const rawPhone = String(p.phone || '');
       let cleanDigits = rawPhone.replace(/\D/g, '');
       if (cleanDigits.length === 10 || cleanDigits.length === 11) {
         cleanDigits = '55' + cleanDigits;
       }
-      if (!cleanDigits.startsWith('55')) {
-        cleanDigits = '5571988880000';
-      }
 
-      // Cálculo do Opportunity Score
+      // Cálculo do Opportunity Score usando apenas métricas disponíveis.
       let score = 10; // Base
-      const hasNoWebsite = !p.website || p.website.trim() === '';
+      const hasNoWebsite = !p.website || String(p.website).trim() === '';
       if (hasNoWebsite) score += pesoSemSite;
 
-      const rating = Number(p.rating) || 4.0;
-      if (rating < 4.0) score += pesoBaixaNota;
-      else if (rating < 4.5) score += Math.round(pesoBaixaNota / 2);
+      const rating = p.rating === undefined || p.rating === null || p.rating === ''
+        ? null
+        : Number(p.rating);
+      if (rating !== null && Number.isFinite(rating)) {
+        if (rating < 4.0) score += pesoBaixaNota;
+        else if (rating < 4.5) score += Math.round(pesoBaixaNota / 2);
+      }
 
-      const reviewCount = Number(p.reviewCount) || 10;
-      if (reviewCount < 15) score += pesoPoucasAvaliacoes;
-      else if (reviewCount < 30) score += Math.round(pesoPoucasAvaliacoes / 2);
+      const reviewCount = p.reviewCount === undefined || p.reviewCount === null || p.reviewCount === ''
+        ? null
+        : Number(p.reviewCount);
+      if (reviewCount !== null && Number.isFinite(reviewCount)) {
+        if (reviewCount < 15) score += pesoPoucasAvaliacoes;
+        else if (reviewCount < 30) score += Math.round(pesoPoucasAvaliacoes / 2);
+      }
 
       score = Math.min(100, Math.max(10, score));
 
@@ -259,12 +211,29 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
 });
 
 // ============================================================================
-// 3. GESTÃO DE LEADS (CRUD Autenticado)
-// ============================================================================
+ // 3. GESTÃO DE LEADS (Firestore isolado por usuário autenticado)
+ // ============================================================================
+type FirebaseRequest = Request & { firebaseUid?: string };
+function userLeads(req: Request) {
+  const uid = (req as FirebaseRequest).firebaseUid;
+  if (!uid) throw new Error('Sessão Firebase ausente.');
+  return getServerFirestore().collection('users').doc(uid).collection('leads');
+}
+
 app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
     const { status, ramo, regiao, search } = req.query as any;
-    const leads = await serverDb.getLeads({ status, ramo, regiao, search });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const leads = await listSupabaseLeads(uid, { status, ramo, regiao, search });
+      return res.json({ success: true, count: leads.length, leads });
+    }
+    const snapshot = await userLeads(req).get();
+    let leads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (status && status !== 'todos') leads = leads.filter((lead: any) => lead.status === status);
+    if (ramo && ramo !== 'todos') leads = leads.filter((lead: any) => lead.ramo === ramo || lead.segment === ramo);
+    if (regiao) leads = leads.filter((lead: any) => String(lead.regiao || lead.city || '').toLowerCase().includes(String(regiao).toLowerCase()));
+    if (search) leads = leads.filter((lead: any) => [lead.nome, lead.name, lead.telefone, lead.phone, lead.email, lead.site, lead.website].some(value => String(value || '').toLowerCase().includes(String(search).toLowerCase())));
     res.json({ success: true, count: leads.length, leads });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao buscar leads', details: err?.message });
@@ -273,34 +242,60 @@ app.get('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.get('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const lead = await serverDb.getLeadById(req.params.id);
-    if (!lead) {
-      return res.status(404).json({ error: 'Lead não encontrado.' });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const lead = await getSupabaseLeadById(uid, req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
+      return res.json({ success: true, lead, interacoes: [] });
     }
-    const interacoes = await serverDb.getInteractionsByLead(req.params.id);
-    res.json({ success: true, lead, interacoes });
+    const doc = await userLeads(req).doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    res.json({ success: true, lead: { id: doc.id, ...doc.data() }, interacoes: [] });
   } catch (err: any) {
-    res.status(500).json({ error: 'Erro ao carregar detalhes do lead', details: err?.message });
+    res.status(500).json({ error: 'Erro ao carregar lead', details: err?.message });
   }
 });
 
 app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
   try {
-    const leadData = req.body;
-    if (!leadData.nome || !leadData.telefone) {
-      return res.status(400).json({ error: 'Nome e telefone são obrigatórios.' });
-    }
-
-    // Verifica duplicado por place_id se informado
-    if (leadData.place_id) {
-      const existing = await serverDb.findLeadByPlaceId(leadData.place_id);
-      if (existing) {
-        return res.status(409).json({ error: 'Lead com este place_id já existe.', lead: existing });
+    const data = req.body || {};
+    const nome = String(data.nome || data.name || '').trim();
+    const telefone = String(data.telefone || data.phone || '').trim();
+    const email = String(data.email || '').trim();
+    if (!nome) return res.status(400).json({ error: 'Nome da empresa é obrigatório.' });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      try {
+        const lead = await createSupabaseLead(uid, data);
+        return res.status(201).json({ success: true, lead });
+      } catch (error: any) {
+        if (String(error?.message || '').includes('HTTP 409')) {
+          return res.status(409).json({ error: 'Esta empresa já está salva na sua lista.' });
+        }
+        throw error;
       }
     }
-
-    const saved = await serverDb.saveLead(leadData);
-    res.status(201).json({ success: true, lead: saved });
+    const collection = userLeads(req);
+    if (data.place_id || data.placeId) {
+      const placeId = String(data.place_id || data.placeId);
+      const duplicate = await collection.where('place_id', '==', placeId).limit(1).get();
+      if (!duplicate.empty) return res.status(409).json({ error: 'Esta empresa já está salva na sua lista.', lead: { id: duplicate.docs[0].id, ...duplicate.docs[0].data() } });
+    }
+    const ref = collection.doc(typeof data.id === 'string' && data.id.length < 120 ? data.id : undefined);
+    const lead = {
+      ...data,
+      nome,
+      name: nome,
+      telefone,
+      phone: telefone,
+      email,
+      id: ref.id,
+      criadoEm: data.criadoEm || data.createdAt || new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+      status: data.status || 'novo',
+    };
+    await ref.set(lead, { merge: true });
+    res.status(201).json({ success: true, lead });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao salvar lead', details: err?.message });
   }
@@ -308,25 +303,24 @@ app.post('/api/leads', requireAuth, async (req: Request, res: Response) => {
 
 app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { status, motivoPerda, proximoContato, nota, site, ramo, regiao } = req.body;
-    const lead = await serverDb.getLeadById(req.params.id);
-    if (!lead) {
-      return res.status(404).json({ error: 'Lead não encontrado.' });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    const allowed = ['status', 'motivoPerda', 'proximoContato', 'nota', 'site', 'ramo', 'regiao', 'email', 'emails', 'telefone', 'phone', 'website', 'notes', 'nextFollowUpDate', 'nextFollowUpNote', 'score', 'address', 'endereco'];
+    if (isSupabaseLeadsConfigured()) {
+      const patch: Record<string, unknown> = {};
+      for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+      const updated = await updateSupabaseLead(uid, req.params.id, patch);
+      if (!updated) return res.status(404).json({ error: 'Lead não encontrado.' });
+      return res.json({ success: true, lead: updated });
     }
-
-    const updated = await serverDb.saveLead({
-      ...lead,
-      ...(status && { status }),
-      ...(motivoPerda !== undefined && { motivoPerda }),
-      ...(proximoContato !== undefined && { proximoContato }),
-      ...(nota !== undefined && { nota }),
-      ...(site !== undefined && { site }),
-      ...(ramo !== undefined && { ramo }),
-      ...(regiao !== undefined && { regiao }),
-      atualizadoEm: new Date().toISOString()
-    });
-
-    res.json({ success: true, lead: updated });
+    const ref = userLeads(req).doc(req.params.id);
+    const existing = await ref.get();
+    if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    const patch: Record<string, unknown> = {};
+    for (const key of allowed) if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+    patch.atualizadoEm = new Date().toISOString();
+    await ref.set(patch, { merge: true });
+    const updated = await ref.get();
+    res.json({ success: true, lead: { id: updated.id, ...updated.data() } });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao atualizar lead', details: err?.message });
   }
@@ -334,8 +328,18 @@ app.patch('/api/leads/:id', requireAuth, async (req: Request, res: Response) => 
 
 app.delete('/api/leads/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    await serverDb.deleteLead(req.params.id);
-    res.json({ success: true, message: 'Lead excluído definitivamente com base na LGPD.' });
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    if (isSupabaseLeadsConfigured()) {
+      const lead = await getSupabaseLeadById(uid, req.params.id);
+      if (!lead) return res.status(404).json({ error: 'Lead não encontrado.' });
+      await deleteSupabaseLead(uid, req.params.id);
+      return res.json({ success: true, message: 'Lead removido da sua lista.' });
+    }
+    const ref = userLeads(req).doc(req.params.id);
+    const existing = await ref.get();
+    if (!existing.exists) return res.status(404).json({ error: 'Lead não encontrado.' });
+    await ref.delete();
+    res.json({ success: true, message: 'Lead removido da sua lista.' });
   } catch (err: any) {
     res.status(500).json({ error: 'Erro ao excluir lead', details: err?.message });
   }
@@ -605,9 +609,12 @@ app.post('/api/templates', requireAuth, async (req: Request, res: Response) => {
 });
 
 // KPIs do Dashboard
-app.get('/api/stats', requireAuth, async (_req: Request, res: Response) => {
+app.get('/api/stats', requireAuth, async (req: Request, res: Response) => {
   try {
-    const leads = await serverDb.getLeads();
+    const uid = (req as FirebaseRequest).firebaseUid!;
+    const leads = isSupabaseLeadsConfigured()
+      ? await listSupabaseLeads(uid)
+      : await serverDb.getLeads();
     const today = new Date().toISOString().split('T')[0];
 
     const totalLeads = leads.length;
@@ -667,50 +674,6 @@ app.get('/vendas', (_req: Request, res: Response) => {
   res.sendFile(path.resolve(__dirname, 'landing.html'));
 });
 
-// Gerador representativo de fallback quando apis externas atingem cota
-function generateRepresentativePlaces(segment: string, location: string, radiusKm: number) {
-  const isSalvador = location.toLowerCase().includes('salvador');
-  const neighborhoods = isSalvador
-    ? ['Pituba', 'Barra', 'Caminho das Árvores', 'Rio Vermelho', 'Itaigara', 'Brotas', 'Ondina']
-    : ['Centro', 'Distrito Empresarial', 'Jardins', 'Bairro Comercial', 'Setor Sul'];
-
-  const templatesBySegment: Record<string, string[]> = {
-    'Condomínios': ['Residencial Torres do Parque', 'Condomínio Solar da Colina', 'Edifício Costa Azul', 'Condomínio Reserva Bela Vista', 'Residencial Alameda das Flores'],
-    'Restaurantes': ['Cantina & Grill Villa', 'Bistrô Mar Azul', 'Churrascaria Fogo Tropical', 'Restaurante Sabor & Prosa', 'Pizzaria Massa Nobre'],
-    'Clínicas': ['Clínica Médica e Diagnóstico Saúde', 'Centro Integrado de Fisioterapia', 'Consultórios OdontoExcel', 'Clínica Dermatológica DermaVida', 'Espaço Médico Bem Estar'],
-    'Lojas': ['Lojas Conforto Lar', 'Varejo Moda Brasil', 'Mega Centro Automotivo', 'Distribuidora União', 'Boutique Elegance'],
-    'Climatização e Refrigeração': ['Hotel & Pousada Mar Dourado', 'Supermercado Central de Carnes', 'Laboratório Vital Diagnósticos', 'Padaria & Confeitaria Imperial', 'Empresarial Executive Center']
-  };
-
-  const names = templatesBySegment[segment] || [
-    `Comercial ${segment} Premier`,
-    `Grupo ${segment} Central`,
-    `Espaço ${segment} & Serviços`,
-    `Empresarial ${location.split(',')[0]}`,
-    `Centro Operacional ${segment}`
-  ];
-
-  const ddd = isSalvador ? '71' : '11';
-
-  return names.map((name, i) => {
-    const neighborhood = neighborhoods[i % neighborhoods.length];
-    const hasSite = i % 3 === 0;
-    const rating = [3.4, 3.8, 4.1, 4.5, 3.6][i % 5];
-    const reviewCount = [7, 19, 34, 82, 12][i % 5];
-    const streetNumber = 100 + i * 140;
-
-    return {
-      name,
-      address: `Av. Principal, ${streetNumber}, ${neighborhood}, ${location}`,
-      phone: `(${ddd}) 9${8000 + i * 123}-${1000 + i * 45}`,
-      website: hasSite ? `https://${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br` : null,
-      rating,
-      reviewCount,
-      placeId: `place_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}_${i}`
-    };
-  });
-}
-
 async function setupServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
@@ -727,12 +690,18 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`LedsNet Server running at http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
 setupServer().catch(err => {
   console.error('Failed to start server:', err);
   process.exit(1);
 });
+
+
+// Exporta o Express para a função serverless da Vercel.
+export default app;

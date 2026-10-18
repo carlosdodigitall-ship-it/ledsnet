@@ -1,0 +1,102 @@
+name: LedsNet - Buscar leads no Google Maps
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: "Busca, categoria e região (ex.: clínicas odontológicas em Feira de Santana, BA)"
+        required: true
+        type: string
+      firebase_uid:
+        description: "UID do usuário autenticado no Firebase (dono dos resultados)"
+        required: true
+        type: string
+      extract_emails:
+        description: "Tentar extrair e-mails dos sites encontrados"
+        required: true
+        default: true
+        type: boolean
+      depth:
+        description: "Profundidade da busca (1 a 3)"
+        required: true
+        default: "1"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ledsnet-scrape-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        shell: bash
+        env:
+          FIREBASE_UID: ${{ inputs.firebase_uid }}
+          SEARCH_QUERY: ${{ inputs.query }}
+        run: |
+          if [[ -z "$FIREBASE_UID" || "$FIREBASE_UID" == *" "* ]]; then
+            echo "firebase_uid inválido"; exit 1
+          fi
+          if [[ -z "$SEARCH_QUERY" ]]; then
+            echo "query obrigatória"; exit 1
+          fi
+
+      - name: Prepare query
+        env:
+          SEARCH_QUERY: ${{ inputs.query }}
+        run: |
+          mkdir -p scraper-output
+          printf '%s\n' "$SEARCH_QUERY" > scraper-output/queries.txt
+
+      - name: Run open-source Google Maps scraper
+        shell: bash
+        env:
+          EXTRACT_EMAILS: ${{ inputs.extract_emails }}
+          DEPTH: ${{ inputs.depth }}
+        run: |
+          EMAIL_FLAG=""
+          if [[ "$EXTRACT_EMAILS" == "true" ]]; then EMAIL_FLAG="-email"; fi
+          docker run --rm \
+            -v "${{ github.workspace }}/scraper-output:/out" \
+            -v "${{ github.workspace }}/scraper-output/queries.txt:/queries.txt:ro" \
+            gosom/google-maps-scraper \
+            -input /queries.txt \
+            -results /out/results.json \
+            -json \
+            -depth "$DEPTH" \
+            $EMAIL_FLAG \
+            -exit-on-inactivity 3m
+
+      - name: Save verified results to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_UID: ${{ inputs.firebase_uid }}
+          SEARCH_QUERY: ${{ inputs.query }}
+        run: |
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            echo "Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nos GitHub Actions Secrets."; exit 1
+          fi
+          python3 scripts/import_scraper_results.py scraper-output/results.json
+
+      - name: Upload raw results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledsnet-scraper-${{ github.run_id }}
+          path: scraper-output/
+          if-no-files-found: ignore
+          retention-days: 7
