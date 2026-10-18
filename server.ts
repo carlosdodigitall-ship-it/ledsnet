@@ -208,28 +208,33 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
         : await serverDb.findLeadByPlaceId(placeId);
       const isDuplicate = !!existingLead;
 
-      // Limpeza de telefone no padrão E.164 sem o + (ex: 5571999998888)
-      let rawPhone = p.phone || '(71) 98888-0000';
+      // Normaliza somente dados existentes; nunca inventa telefone, nota ou avaliações.
+      const rawPhone = String(p.phone || '');
       let cleanDigits = rawPhone.replace(/\D/g, '');
       if (cleanDigits.length === 10 || cleanDigits.length === 11) {
         cleanDigits = '55' + cleanDigits;
       }
-      if (!cleanDigits.startsWith('55')) {
-        cleanDigits = '5571988880000';
-      }
 
-      // Cálculo do Opportunity Score
+      // Cálculo do Opportunity Score usando apenas métricas disponíveis.
       let score = 10; // Base
-      const hasNoWebsite = !p.website || p.website.trim() === '';
+      const hasNoWebsite = !p.website || String(p.website).trim() === '';
       if (hasNoWebsite) score += pesoSemSite;
 
-      const rating = Number(p.rating) || 4.0;
-      if (rating < 4.0) score += pesoBaixaNota;
-      else if (rating < 4.5) score += Math.round(pesoBaixaNota / 2);
+      const rating = p.rating === undefined || p.rating === null || p.rating === ''
+        ? null
+        : Number(p.rating);
+      if (rating !== null && Number.isFinite(rating)) {
+        if (rating < 4.0) score += pesoBaixaNota;
+        else if (rating < 4.5) score += Math.round(pesoBaixaNota / 2);
+      }
 
-      const reviewCount = Number(p.reviewCount) || 10;
-      if (reviewCount < 15) score += pesoPoucasAvaliacoes;
-      else if (reviewCount < 30) score += Math.round(pesoPoucasAvaliacoes / 2);
+      const reviewCount = p.reviewCount === undefined || p.reviewCount === null || p.reviewCount === ''
+        ? null
+        : Number(p.reviewCount);
+      if (reviewCount !== null && Number.isFinite(reviewCount)) {
+        if (reviewCount < 15) score += pesoPoucasAvaliacoes;
+        else if (reviewCount < 30) score += Math.round(pesoPoucasAvaliacoes / 2);
+      }
 
       score = Math.min(100, Math.max(10, score));
 
