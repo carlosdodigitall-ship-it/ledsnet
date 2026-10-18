@@ -4,17 +4,94 @@ interface SearchParams {
   radiusKm?: number;
 }
 
-interface GooglePlace {
-  id?: string;
-  displayName?: { text?: string };
-  formattedAddress?: string;
-  nationalPhoneNumber?: string;
-  internationalPhoneNumber?: string;
-  websiteUri?: string;
-  rating?: number;
-  userRatingCount?: number;
-  googleMapsUri?: string;
-  currentOpeningHours?: { openNow?: boolean };
+type OsmElement = {
+  type: 'node' | 'way' | 'relation';
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+};
+
+type GeoResult = { lat: string; lon: string; display_name: string };
+
+const USER_AGENT = 'LedsNet/1.0 (https://ledsnet.vercel.app)';
+
+function categoryFilters(segment: string): string[] {
+  const value = segment.toLocaleLowerCase('pt-BR');
+  if (/climat|refrigera|ar.?condicionado|hvac/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["craft"="hvac"];',
+      'nwr(around:{radius},{lat},{lon})["shop"="appliance"];',
+      'nwr(around:{radius},{lat},{lon})["shop"="electronics"];',
+      'nwr(around:{radius},{lat},{lon})["craft"="electrician"];',
+    ];
+  }
+  if (/restaurante|lanchonete|pizzaria|comida|aliment/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["amenity"~"restaurant|fast_food|food_court"];',
+      'nwr(around:{radius},{lat},{lon})["amenity"="cafe"];',
+    ];
+  }
+  if (/barbear|sal[aã]o|beleza|cabeleireir/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["shop"~"hairdresser|beauty"];',
+    ];
+  }
+  if (/mercado|supermercado|mercearia|conveni[eê]ncia/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["shop"~"supermarket|convenience|greengrocer"];',
+    ];
+  }
+  if (/m[eé]dic|cl[ií]nica|dent|sa[uú]de|farm[aá]cia/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["amenity"~"clinic|dentist|doctors|pharmacy"];',
+      'nwr(around:{radius},{lat},{lon})["healthcare"];',
+    ];
+  }
+  if (/oficina|mec[aâ]nic|autom[oó]v|autopeça|pneu/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["shop"~"car_repair|car_parts|tyres"];',
+      'nwr(around:{radius},{lat},{lon})["amenity"="car_repair"];',
+    ];
+  }
+  if (/hotel|pousada|hosped/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["tourism"~"hotel|guest_house|hostel"];',
+    ];
+  }
+  if (/escrit[oó]rio|contabilidade|advocacia|consultoria/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["office"];',
+    ];
+  }
+  if (/loja|com[eé]rcio|varejo/.test(value)) {
+    return [
+      'nwr(around:{radius},{lat},{lon})["shop"];',
+    ];
+  }
+
+  // For other business segments, use common OSM business tags. Results are
+  // still real OpenStreetMap features; no AI-generated companies are returned.
+  return [
+    'nwr(around:{radius},{lat},{lon})["shop"];',
+    'nwr(around:{radius},{lat},{lon})["office"];',
+    'nwr(around:{radius},{lat},{lon})["craft"];',
+    'nwr(around:{radius},{lat},{lon})["amenity"~"restaurant|cafe|clinic|dentist|doctors|pharmacy|car_repair"];',
+  ];
+}
+
+function getCoordinates(element: OsmElement): { lat: number; lon: number } | null {
+  const lat = element.lat ?? element.center?.lat;
+  const lon = element.lon ?? element.center?.lon;
+  return typeof lat === 'number' && typeof lon === 'number' ? { lat, lon } : null;
+}
+
+function addressFromTags(tags: Record<string, string>, fallback: string): string {
+  const street = [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(', ');
+  const locality = [tags['addr:suburb'], tags['addr:city'], tags['addr:state']].filter(Boolean).join(', ');
+  const parts = [street, tags['addr:postcode'], locality].filter(Boolean);
+  return parts.length ? parts.join(' - ') : fallback;
 }
 
 export async function searchLeadsWithGemini({
@@ -22,20 +99,7 @@ export async function searchLeadsWithGemini({
   location,
   radiusKm = 15,
 }: SearchParams): Promise<{ status: number; data: any }> {
-  // Despite the legacy function name, this now queries Google Places directly.
-  // Configure GOOGLE_MAPS_API_KEY in the Vercel server environment.
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return {
-      status: 503,
-      data: {
-        success: false,
-        error: 'A busca real do Google Maps não está configurada. Adicione GOOGLE_MAPS_API_KEY nas variáveis de ambiente da Vercel e habilite a Places API (New) no Google Cloud.',
-      },
-    };
-  }
-
+  // Free, public OpenStreetMap services. Their usage policies and rate limits apply.
   if (!segment.trim() || !location.trim()) {
     return {
       status: 400,
@@ -43,93 +107,104 @@ export async function searchLeadsWithGemini({
     };
   }
 
+  const safeRadiusKm = Math.min(50, Math.max(1, Number(radiusKm) || 15));
+  const radius = Math.round(safeRadiusKm * 1000);
+
   try {
-    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': [
-          'places.id',
-          'places.displayName',
-          'places.formattedAddress',
-          'places.nationalPhoneNumber',
-          'places.internationalPhoneNumber',
-          'places.websiteUri',
-          'places.rating',
-          'places.userRatingCount',
-          'places.googleMapsUri',
-          'places.currentOpeningHours.openNow',
-        ].join(','),
-      },
-      body: JSON.stringify({
-        textQuery: `${segment.trim()} em ${location.trim()}, Brasil`,
-        languageCode: 'pt-BR',
-        regionCode: 'BR',
-        pageSize: 20,
-      }),
+    const geocodeUrl = new URL('https://nominatim.openstreetmap.org/search');
+    geocodeUrl.searchParams.set('q', `${location.trim()}, Brasil`);
+    geocodeUrl.searchParams.set('format', 'jsonv2');
+    geocodeUrl.searchParams.set('limit', '1');
+    geocodeUrl.searchParams.set('countrycodes', 'br');
+
+    const geocodeResponse = await fetch(geocodeUrl, {
+      headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'pt-BR,pt;q=0.9' },
     });
 
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const apiStatus = payload?.error?.status;
-      const apiMessage = payload?.error?.message;
-      console.error('[Google Places] API request failed:', response.status, apiStatus, apiMessage);
-
-      if (response.status === 403) {
-        return {
-          status: 502,
-          data: {
-            success: false,
-            error: 'O Google recusou a consulta. Confira se a Places API (New) está habilitada no projeto Google Cloud, se a chave GOOGLE_MAPS_API_KEY está correta e se o faturamento está ativo.',
-          },
-        };
-      }
-
-      if (response.status === 429) {
-        return {
-          status: 429,
-          data: {
-            success: false,
-            error: 'A cota da API Google Places foi excedida. Verifique as cotas e o faturamento no Google Cloud.',
-          },
-        };
-      }
-
+    if (geocodeResponse.status === 429) {
       return {
-        status: 502,
+        status: 503,
+        data: { success: false, error: 'O serviço gratuito de localização está temporariamente ocupado. Aguarde um minuto e tente novamente.' },
+      };
+    }
+    if (!geocodeResponse.ok) {
+      throw new Error(`Nominatim geocoding failed: HTTP ${geocodeResponse.status}`);
+    }
+
+    const geocoded = (await geocodeResponse.json()) as GeoResult[];
+    if (!geocoded.length) {
+      return {
+        status: 200,
         data: {
-          success: false,
-          error: 'A consulta ao Google Places falhou. Verifique a chave de API, as restrições da chave e a configuração do Google Cloud.',
+          success: true, query: { segment, location, radiusKm: safeRadiusKm },
+          total: 0, leads: [], source: 'openstreetmap',
+          message: 'Não encontramos essa região no OpenStreetMap. Confira o nome da cidade e o estado.',
         },
       };
     }
 
-    const places: GooglePlace[] = Array.isArray(payload?.places) ? payload.places : [];
-    const leads = places
-      .filter((place) => place.id && place.displayName?.text)
-      .map((place) => {
-        const phone = place.nationalPhoneNumber || place.internationalPhoneNumber || '';
-        const digits = phone.replace(/\\D/g, '');
+    const center = geocoded[0];
+    const clauses = categoryFilters(segment)
+      .map((clause) => clause.replaceAll('{radius}', String(radius))
+        .replaceAll('{lat}', center.lat).replaceAll('{lon}', center.lon))
+      .join('\n');
+    const query = `[out:json][timeout:25];(\n${clauses}\n);out center tags;`;
 
+    const overpassResponse = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'User-Agent': USER_AGENT,
+      },
+      body: new URLSearchParams({ data: query }).toString(),
+    });
+
+    if (overpassResponse.status === 429 || overpassResponse.status === 504) {
+      return {
+        status: 503,
+        data: { success: false, error: 'O serviço gratuito de mapas está com alta demanda. Aguarde um pouco e tente novamente.' },
+      };
+    }
+    if (!overpassResponse.ok) {
+      throw new Error(`Overpass query failed: HTTP ${overpassResponse.status}`);
+    }
+
+    const payload = await overpassResponse.json() as { elements?: OsmElement[] };
+    const seen = new Set<string>();
+    const leads = (payload.elements || [])
+      .filter((element) => element.tags?.name)
+      .filter((element) => {
+        const key = `${element.type}/${element.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 100)
+      .map((element) => {
+        const tags = element.tags || {};
+        const coords = getCoordinates(element);
+        const name = tags.name!;
+        const phone = tags.phone || tags['contact:phone'] || '';
+        const website = tags.website || tags['contact:website'] || null;
+        const osmType = element.type;
+        const osmId = element.id;
         return {
-          id: place.id,
-          placeId: place.id,
-          name: place.displayName!.text!,
-          segment: segment.trim(),
-          address: place.formattedAddress || location.trim(),
+          id: `osm-${osmType}-${osmId}`,
+          placeId: `osm-${osmType}-${osmId}`,
+          name,
+          segment: tags.shop || tags.amenity || tags.office || tags.craft || segment.trim(),
+          address: addressFromTags(tags, center.display_name),
           city: location.trim(),
           phone,
-          whatsapp: digits,
-          website: place.websiteUri || null,
-          ...(typeof place.rating === 'number' ? { rating: place.rating } : {}),
-          ...(typeof place.userRatingCount === 'number' ? { reviewCount: place.userRatingCount } : {}),
-          mapsUrl: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.displayName!.text} ${location}`)}`,
-          ...(typeof place.currentOpeningHours?.openNow === 'boolean'
-            ? { openNow: place.currentOpeningHours.openNow }
-            : {}),
-          source: 'google_places' as const,
+          whatsapp: phone.replace(/\\D/g, ''),
+          website,
+          mapsUrl: coords
+            ? `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lon}#map=18/${coords.lat}/${coords.lon}`
+            : `https://www.openstreetmap.org/search?query=${encodeURIComponent(name + ' ' + location)}`,
+          source: 'openstreetmap' as const,
+          sourceUrl: coords
+            ? `https://www.openstreetmap.org/?mlat=${coords.lat}&mlon=${coords.lon}#map=18/${coords.lat}/${coords.lon}`
+            : undefined,
         };
       });
 
@@ -137,20 +212,22 @@ export async function searchLeadsWithGemini({
       status: 200,
       data: {
         success: true,
-        query: { segment, location, radiusKm },
+        query: { segment: segment.trim(), location: location.trim(), radiusKm: safeRadiusKm },
         total: leads.length,
         leads,
-        source: 'google_places_api',
-        message: leads.length ? undefined : 'O Google Places não retornou estabelecimentos para essa pesquisa. Tente outro segmento ou região.',
+        source: 'openstreetmap',
+        message: leads.length
+          ? 'Resultados obtidos de dados mapeados no OpenStreetMap. Telefones, sites e endereços podem estar ausentes ou desatualizados.'
+          : 'O OpenStreetMap não retornou locais mapeados para esse segmento e região. Experimente um segmento mais amplo ou um raio maior.',
       },
     };
   } catch (error: any) {
-    console.error('[Google Places] Request error:', error?.message || error);
+    console.error('[OpenStreetMap Search] Error:', error?.message || error);
     return {
       status: 502,
       data: {
         success: false,
-        error: 'Não foi possível conectar ao Google Places. Tente novamente e confira a disponibilidade da API.',
+        error: 'Não foi possível consultar os serviços gratuitos de mapas agora. Tente novamente em instantes.',
       },
     };
   }
