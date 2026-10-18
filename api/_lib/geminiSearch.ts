@@ -119,7 +119,7 @@ export async function searchLeadsWithGemini({
 
     const geocodeResponse = await fetch(geocodeUrl, {
       headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'pt-BR,pt;q=0.9' },
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(3500),
     });
 
     if (geocodeResponse.status === 429) {
@@ -149,54 +149,50 @@ export async function searchLeadsWithGemini({
       .map((clause) => clause.replaceAll('{radius}', String(radius))
         .replaceAll('{lat}', center.lat).replaceAll('{lon}', center.lon))
       .join('\n');
-    const query = `[out:json][timeout:12];(\n${clauses}\n);out center tags 100;`;
+    const query = `[out:json][timeout:8];(\n${clauses}\n);out center tags 100;`;
 
-    // Overpass has multiple public instances; try a secondary endpoint if the
-    // primary is temporarily unavailable. Short timeouts avoid hanging requests.
+    // Query public Overpass instances concurrently instead of waiting for one
+    // endpoint to time out before trying the other. Public instances are busy
+    // at unpredictable times; the first successful response wins.
     const overpassEndpoints = [
       'https://overpass-api.de/api/interpreter',
       'https://overpass.kumi.systems/api/interpreter',
     ];
     const requestBody = new URLSearchParams({ data: query }).toString();
-    let payload: { elements?: OsmElement[] } | null = null;
-    let lastOverpassError = 'No Overpass endpoint responded';
 
-    for (const [index, endpoint] of overpassEndpoints.entries()) {
-      try {
-        const overpassResponse = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-            'User-Agent': USER_AGENT,
-          },
-          body: requestBody,
-          signal: AbortSignal.timeout(index === 0 ? 3500 : 2200),
-        });
-
-        if (overpassResponse.status === 429 || overpassResponse.status === 502 ||
-            overpassResponse.status === 503 || overpassResponse.status === 504) {
-          lastOverpassError = `Overpass temporarily unavailable: HTTP ${overpassResponse.status}`;
-          continue;
-        }
-        if (!overpassResponse.ok) {
-          lastOverpassError = `Overpass query failed: HTTP ${overpassResponse.status}`;
-          continue;
-        }
-
-        payload = await overpassResponse.json() as { elements?: OsmElement[] };
-        break;
-      } catch (endpointError: any) {
-        lastOverpassError = endpointError?.name === 'TimeoutError' || endpointError?.name === 'AbortError'
-          ? 'Overpass request timed out'
-          : (endpointError?.message || 'Overpass network error');
+    const attempts = overpassEndpoints.map(async (endpoint) => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          'User-Agent': USER_AGENT,
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!response.ok) {
+        throw new Error(`Overpass endpoint returned HTTP ${response.status}`);
       }
+      const result = await response.json() as { elements?: OsmElement[] };
+      if (!Array.isArray(result.elements)) {
+        throw new Error('Overpass returned an invalid response');
+      }
+      return result;
+    });
+
+    let payload: { elements?: OsmElement[] } | null = null;
+    try {
+      payload = await Promise.any(attempts);
+    } catch (error: any) {
+      const errors = Array.isArray(error?.errors) ? error.errors : [];
+      console.error('[OpenStreetMap Search] All Overpass endpoints failed:',
+        errors.map((item: any) => item?.message || String(item)).join('; ') || error?.message || error);
     }
 
     if (!payload) {
-      console.error('[OpenStreetMap Search] All Overpass endpoints failed:', lastOverpassError);
       return {
         status: 503,
-        data: { success: false, error: 'Os mapas gratuitos estão demorando para responder. Tente novamente em instantes ou reduza o raio da busca.' },
+        data: { success: false, error: 'Os serviços gratuitos de mapas estão temporariamente sobrecarregados. Aguarde alguns segundos e tente novamente; se persistir, reduza o raio para 5 km.' },
       };
     }
     const seen = new Set<string>();
