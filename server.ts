@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { getAuth } from 'firebase-admin/auth';
+import { getApps } from 'firebase-admin/app';
 import { serverDb } from './src/server/db.js';
 import scraperRouter from './src/server/scraperRoutes.js';
 
@@ -45,22 +47,20 @@ app.use('/api/scraper', scraperRouter);
 // ============================================================================
 // 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
 // ============================================================================
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const headerKey = req.headers['x-access-key'] as string;
-  const authHeader = req.headers['authorization'];
-  const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  const queryKey = req.query.key as string;
-
-  const providedKey = headerKey || bearerKey || queryKey;
-
-  if (!providedKey || providedKey !== ACCESS_KEY) {
-    return res.status(401).json({
-      error: 'Acesso negado: chave de acesso inválida ou ausente.',
-      message: 'Forneça a chave privada no cabeçalho x-access-key ou Authorization: Bearer <key>.'
-    });
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return res.status(401).json({ error: 'Sessão Firebase ausente. Entre novamente na plataforma.' });
   }
-
-  next();
+  try {
+    const app = getApps()[0];
+    if (!app) return res.status(503).json({ error: 'Firebase Admin não está inicializado.' });
+    await getAuth(app).verifyIdToken(token);
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Sessão Firebase inválida ou expirada. Entre novamente.' });
+  }
 }
 
 // Endpoint para validação da chave de acesso no login do painel
