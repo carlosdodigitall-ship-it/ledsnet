@@ -1,17 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getAuth } from 'firebase-admin/auth';
 import { getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getServerFirestore } from './db.js';
 import { z } from 'zod';
 import { scraperClient } from './scraperClient.js';
 
 const router = Router();
-const dbId = process.env.FIRESTORE_DATABASE_ID || '(default)';
-const jobs = () => {
-  const app = getApps()[0];
-  if (!app) throw new Error('Firebase Admin não foi inicializado.');
-  return getFirestore(app, dbId).collection('scraper_jobs');
-};
+const jobs = () => getServerFirestore().collection('scraper_jobs');
 
 type AuthRequest = Request & { firebaseUid?: string };
 
