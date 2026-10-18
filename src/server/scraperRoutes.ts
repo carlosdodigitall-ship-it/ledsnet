@@ -18,7 +18,6 @@ async function requireFirebaseUser(req: AuthRequest, res: Response, next: NextFu
     const app = getApps()[0];
     if (!app) return res.status(503).json({ error: 'Firebase Admin não está configurado.' });
     const decoded = await getAuth(app).verifyIdToken(token);
-    if (!decoded.email_verified) return res.status(403).json({ error: 'Verifique o e-mail da conta antes de pesquisar.' });
     req.firebaseUid = decoded.uid;
     next();
   } catch {
