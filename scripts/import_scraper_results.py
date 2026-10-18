@@ -143,7 +143,7 @@ def main():
     if not user_id or not project_id or not raw_credentials:
         raise SystemExit("FIREBASE_UID, FIREBASE_PROJECT_ID e FIREBASE_SERVICE_ACCOUNT_KEY são obrigatórios.")
     try:
-        service_account = json.loads(raw_credentials)
+        parsed_account = json.loads(raw_credentials)
     except json.JSONDecodeError as exc:
         raise SystemExit("FIREBASE_SERVICE_ACCOUNT_KEY precisa conter JSON válido.") from exc
 
@@ -158,7 +158,7 @@ def main():
     except ImportError as exc:
         raise SystemExit("Dependência ausente. Instale google-cloud-firestore antes da importação.") from exc
 
-    credentials = service_account.Credentials.from_service_account_info(service_account)
+    credentials = service_account.Credentials.from_service_account_info(parsed_account)
     client = firestore.Client(project=project_id, credentials=credentials, database=database_id)
     collection = client.collection("users").document(user_id).collection("leads")
     saved = 0
