@@ -1,12 +1,24 @@
 # LedsNet — integração do Google Maps Scraper Kit
 
-## O que foi integrado
+## Repositório de referência confirmado
 
-O link informado anteriormente (vzbaggio/google-maps-scraper-kit) não pôde ser localizado pelo conector do GitHub. Para não copiar código de um repositório que não conseguimos verificar, esta integração usa o motor open-source [gosom/google-maps-scraper](https://github.com/gosom/google-maps-scraper), que já é a base do worker do LedsNet e possui licença MIT.
+O repositório correto é [felipenunes07/google-maps-scraper-kit](https://github.com/felipenunes07/google-maps-scraper-kit), branch `master`, licença MIT.
 
-A integração mantém o painel e o banco do LedsNet; não substitui o projeto nem cria outro banco.
+Ele é uma camada de conveniência em torno de [gosom/google-maps-scraper](https://github.com/gosom/google-maps-scraper). Acrescenta Docker Compose, uma interface web em português com mapa e painel, scripts Python/Bash para consultas individuais e em lote, geocodificação via Nominatim e enriquecimento opcional de links sociais a partir dos sites das empresas. A saída padrão inclui nome, telefone, e-mail, site, categoria, endereço, nota e quantidade de avaliações.
 
-## Fluxo
+## Plano de integração no LedsNet
+
+A integração deve reutilizar a lógica e a interface relevantes sem substituir o frontend, o Firebase Auth ou o banco atual do LedsNet. O fluxo pretendido é:
+
+1. O usuário autenticado informa categoria/termo e região do Brasil.
+2. O backend executa a coleta com limites de concorrência e profundidade.
+3. Os resultados são normalizados pelo importador do LedsNet.
+4. Os registros são enviados ao Supabase e associados ao Firebase UID autenticado.
+5. A tela de leads exibe os resultados e permite filtrar/exportar, sem expor chaves secretas ao navegador.
+
+**Importante:** o kit original foi desenhado para execução local. O Docker Compose publica o serviço somente em `127.0.0.1:8080`, pois a API do scraper não tem autenticação própria. Não exponha essa API publicamente sem uma camada de autenticação e controles de acesso. Para uso multiusuário no LedsNet, o scraper precisa rodar em um worker/serviço controlado, não no navegador do cliente.
+
+## Fluxo já preparado no LedsNet
 
 1. O usuário dispara manualmente o workflow **LedsNet - Buscar leads no Google Maps** em GitHub Actions.
 2. O workflow executa o scraper em um runner temporário do GitHub, sem exigir VPS própria.
@@ -15,9 +27,11 @@ A integração mantém o painel e o banco do LedsNet; não substitui o projeto n
 5. O índice único **(user_id, place_id)** permite atualizar registros repetidos sem duplicá-los.
 6. O arquivo bruto é salvo como artefato do workflow por sete dias para diagnóstico.
 
+Esse workflow é uma etapa de importação manual e não significa que a interface completa do kit já esteja incorporada ao produto nem que a coleta de ponta a ponta tenha sido validada em produção.
+
 ## Formatos aceitos pelo importador
 
-O importador aceita JSON com lista, JSON com uma lista dentro de results, places, data ou items, um objeto único e JSON Lines (um objeto por linha). Ele reconhece os campos do scraper, incluindo title, link, cid, review_rating e review_count, além de aliases comuns.
+O importador aceita JSON com lista, JSON com uma lista dentro de `results`, `places`, `data` ou `items`, um objeto único e JSON Lines (um objeto por linha). Ele reconhece os campos do scraper, incluindo `title`, `link`, `cid`, `review_rating` e `review_count`, além de aliases comuns.
 
 Testes locais sem rede:
 
@@ -34,8 +48,8 @@ Ao executar o workflow, informe um Firebase UID válido. O workflow atual usa es
 
 ## Limites e responsabilidade
 
-- A execução é manual e pontual; não é um serviço de scraping contínuo.
+- A execução atual do workflow é manual e pontual; não é um serviço de scraping contínuo.
 - GitHub Actions fornece runners temporários, mas limites de uso e disponibilidade dependem das cotas da conta GitHub.
-- Google Maps pode limitar ou bloquear temporariamente tráfego automatizado. Comece com profundidade baixa e uma busca por vez.
+- O projeto original alerta que o Google Maps pode limitar ou bloquear temporariamente tráfego automatizado. Comece com profundidade baixa e uma busca por vez.
 - Os resultados devem ser verificados antes do contato. Respeite os termos aplicáveis, a LGPD, a finalidade e a base legal para tratamento de dados pessoais e solicitações de não contato.
 - E-mails e telefones não são garantidos para cada empresa.
