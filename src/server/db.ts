@@ -100,6 +100,16 @@ function initDefaultData() {
 }
 initDefaultData();
 
+// Retorna a mesma instância do Firestore usada pelo backend, sem fallback em memória.
+// Operações que exigem persistência devem falhar explicitamente se o Firestore não estiver disponível.
+export function getServerFirestore(): Firestore {
+  if (!firestoreInstance || useMemoryFallback) {
+    throw new Error('Firestore indisponível: configure as credenciais Firebase Admin e o banco correto.');
+  }
+  return firestoreInstance;
+}
+
+
 export const serverDb = {
   // ==========================================
   // LEADS
