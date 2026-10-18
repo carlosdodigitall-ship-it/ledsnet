@@ -108,3 +108,170 @@
   .app-shell main > div { padding-left: 14px; padding-right: 14px; }
   .app-shell [class~="text-[10px]"] { font-size: 11px !important; }
 }
+
+
+/* Refinamento visual SaaS — dashboard responsivo LedsNet */
+:root {
+  --ledsnet-blue: #2563eb;
+  --ledsnet-blue-dark: #1d4ed8;
+  --ledsnet-border: #e5eaf3;
+  --ledsnet-muted: #64748b;
+  --ledsnet-shadow: 0 2px 8px rgba(24, 45, 85, .035);
+  --ledsnet-shadow-hover: 0 12px 28px rgba(24, 45, 85, .075);
+}
+
+.app-shell {
+  isolation: isolate;
+  min-width: 0;
+}
+
+.app-shell main,
+.app-shell main > div,
+.app-shell section,
+.app-shell article {
+  min-width: 0;
+}
+
+.app-shell [class*="rounded-2xl"],
+.app-shell [class*="rounded-xl"] {
+  scroll-margin-top: 88px;
+}
+
+.app-shell [class*="border-slate-"] {
+  border-color: var(--ledsnet-border);
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]),
+.app-shell select,
+.app-shell textarea {
+  min-height: 42px;
+  border-radius: 10px;
+  border-color: #d5deeb;
+  background-color: #fff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: #7da8ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
+}
+
+.app-shell button,
+.app-shell a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell button:active {
+  transform: translateY(0);
+}
+
+.app-shell button[class*="bg-blue-"]:hover,
+.app-shell a[class*="bg-blue-"]:hover {
+  filter: brightness(.97);
+}
+
+.app-shell [class*="shadow-sm"],
+.app-shell [class*="shadow-md"] {
+  box-shadow: var(--ledsnet-shadow);
+}
+
+.app-shell [class*="grid"] > [class*="rounded-2xl"],
+.app-shell [class*="grid"] > [class*="rounded-xl"] {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.app-shell [class*="grid"] > [class*="rounded-2xl"]:hover,
+.app-shell [class*="grid"] > [class*="rounded-xl"]:hover {
+  border-color: #d2e0f8;
+  box-shadow: var(--ledsnet-shadow-hover);
+}
+
+.app-shell [class*="overflow-x-auto"] {
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.app-shell table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.app-shell th {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .025em;
+}
+
+.app-shell td,
+.app-shell th {
+  overflow-wrap: anywhere;
+}
+
+.app-shell ::selection {
+  color: #173a7a;
+  background: #dbeafe;
+}
+
+@media (min-width: 1024px) {
+  .app-shell main > div {
+    padding-top: 1.75rem;
+    padding-bottom: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    font-size: 13px;
+  }
+
+  .app-shell main > div {
+    padding-top: 1.1rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell [class*="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell [class*="overflow-x-auto"] {
+    max-width: 100%;
+  }
+
+  .app-shell input,
+  .app-shell select,
+  .app-shell textarea,
+  .app-shell button {
+    scroll-margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-shell main > div {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .app-shell [class*="rounded-2xl"] {
+    border-radius: 14px;
+  }
+
+  .app-shell [class*="grid-cols-4"] {
+    gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
