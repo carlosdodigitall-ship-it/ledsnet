@@ -20,6 +20,7 @@ create table if not exists public.ledsnet_leads (
   score integer not null default 0 check (score between 0 and 100),
   notes text,
   next_follow_up_date timestamptz,
+  next_follow_up_note text,
   motivo_perda text,
   source text not null default 'google_maps_scraper',
   raw_data jsonb not null default '{}'::jsonb,
