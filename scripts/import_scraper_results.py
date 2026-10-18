@@ -53,6 +53,11 @@ def load_rows(path, user_id):
             reviews = int(review_raw) if review_raw is not None else None
         except (TypeError, ValueError):
             reviews = None
+        category = value(item, "category", "categories", "type")
+        if isinstance(category, list):
+            category = ", ".join(str(part) for part in category if part)
+        elif category is not None:
+            category = str(category)
         rows.append({
             "user_id": user_id,
             "place_id": str(place_id),
@@ -63,7 +68,8 @@ def load_rows(path, user_id):
             "emails": normalize_emails(value(item, "emails", "email")),
             "rating": rating,
             "review_count": reviews,
-            "category": value(item, "category", "categories", "type"),
+            "category": category,
+            "region": os.environ.get("SEARCH_QUERY", "").strip() or None,
             "source": "google_maps_scraper",
             "raw_data": item,
             "updated_at": datetime.now(timezone.utc).isoformat()
