@@ -86,6 +86,28 @@ export const api = {
     }));
   },
 
+  async getTasks() {
+    const data = await readJson(await fetch('/api/tasks', { headers: await getHeaders() }));
+    return data.tasks || [];
+  },
+
+  async replaceTasks(tasks: unknown[]) {
+    return readJson(await fetch('/api/tasks', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ tasks }) }));
+  },
+
+  async getInteractions() {
+    const data = await readJson(await fetch('/api/interactions', { headers: await getHeaders() }));
+    return data.interactions || [];
+  },
+
+  async replaceInteractions(interactions: unknown[]) {
+    return readJson(await fetch('/api/interactions', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ interactions }) }));
+  },
+
+  async replaceTemplates(templates: unknown[]) {
+    return readJson(await fetch('/api/templates', { method: 'PUT', headers: await getHeaders(), body: JSON.stringify({ templates }) }));
+  },
+
   async getStats() {
     return readJson(await fetch('/api/stats', { headers: await getHeaders() }));
   },
