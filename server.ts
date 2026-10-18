@@ -45,7 +45,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api/scraper', scraperRouter);
 
 // ============================================================================
-// 1. MIDDLEWARE DE AUTENTICAÇÃO POR CHAVE PRIVADA (Zero-Trust)
+// 1. MIDDLEWARE DE AUTENTICAÇÃO FIREBASE (Zero-Trust)
 // ============================================================================
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -182,9 +182,12 @@ Formate sua resposta EXCLUSIVAMENTE como um JSON com a chave "places" contendo u
       }
     }
 
-    // 3. Fallback de dados representativos para garantir continuidade se APIs estiverem sem cota
+    // Não inventa estabelecimentos quando as fontes reais falham.
     if (rawPlaces.length === 0) {
-      rawPlaces = generateRepresentativePlaces(segment, location, radiusKm);
+      return res.status(503).json({
+        error: 'Nenhuma fonte real de pesquisa respondeu. Configure GOOGLE_PLACES_API_KEY ou GEMINI_API_KEY, ou use a opção de extração por scraper com a VPS configurada.',
+        sourceUnavailable: true,
+      });
     }
 
     // 4. Processamento, Deduplicação por place_id e Cálculo do Opportunity Score
