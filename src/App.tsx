@@ -393,6 +393,7 @@ export default function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        accessKey={accessKey}
         onLogout={handleLogout}
         onExportCSV={() => exportLeadsToCSV(leads)}
         leads={leads}
