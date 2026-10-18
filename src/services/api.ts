@@ -15,20 +15,6 @@ async function readJson(response: Response) {
 }
 
 export const api = {
-  async validateKey(key: string): Promise<{ valid: boolean; error?: string }> {
-    try {
-      const res = await fetch('/api/auth/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-      });
-      const data = await res.json();
-      return { valid: res.ok && data.valid, error: data.error };
-    } catch (err: any) {
-      return { valid: false, error: err?.message || 'Falha de conexão com o servidor.' };
-    }
-  },
-
   async getLeads(filters?: { status?: string; ramo?: string; regiao?: string; search?: string }) {
     const params = new URLSearchParams();
     if (filters?.status && filters.status !== 'todos') params.append('status', filters.status);
