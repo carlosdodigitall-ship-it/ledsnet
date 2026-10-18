@@ -58,9 +58,11 @@ function getAdminApp(): App {
  * Retorna somente o Firestore real. Erros de credencial, permissão ou banco
  * são propagados para a API: nunca há fallback em memória nem gravação fictícia.
  */
+export function getServerFirebaseApp(): App { return getAdminApp(); }
+
 export function getServerFirestore(): Firestore {
   if (firestore) return firestore;
-  const app = getAdminApp();
+  const app = getServerFirebaseApp();
   firestore = getFirestore(app, databaseId);
   return firestore;
 }
